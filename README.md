@@ -67,10 +67,60 @@
 | `tcp check <host:port>` | TCP connect 체크 | `--warning` `--critical` |
 | `sys check` | 로컬 디스크/메모리/로드/도커 컨테이너 수 | |
 | `completion <shell>` | shell completion 스크립트 출력 (`bash`/`zsh`/`fish`/`powershell`/`elvish`) | |
+| `update` | 최신 릴리스로 자기 자신을 교체 | `--tag <TAG>` `--force` (+ 전역 `--dry-run` `--json`) |
 
 `health`류를 제외한 조회 커맨드는 전부 `--json` 지원 — `dbops pg tables --json \| jq .`처럼 그대로 파싱된다.
 
-## 설치 / 배포
+## 설치
+
+### install.sh (권장)
+
+`install.sh`가 OS/아키텍처를 판별해 최신 릴리스에서 맞는 아티팩트를 받고, SHA256을 검증한 뒤 `dbops` 이름으로 설치한다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
+```
+
+**저장소가 private인 동안에는 토큰이 필요하다.** 스크립트를 받아오는 것부터 GitHub 인증이 걸리므로 두 군데 모두 토큰이 들어간다:
+
+```bash
+export GITHUB_TOKEN=$(gh auth token)     # 또는 PAT (contents: read)
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
+```
+
+스크립트 자체는 `DBOPS_GITHUB_TOKEN` → `GITHUB_TOKEN` → `GH_TOKEN` 순으로 찾고, 셋 다 없으면 `gh auth token`까지 시도한다. 공개 저장소가 되면 토큰 없이도 그대로 동작한다 (단, 미인증 GitHub API는 IP당 시간당 60회 제한).
+
+| 환경변수 | 설명 | 기본값 |
+|---|---|---|
+| `DBOPS_VERSION` | 설치할 릴리스 태그 | 최신 릴리스 |
+| `DBOPS_INSTALL_DIR` | 설치 위치 | 쓰기 가능하면 `/usr/local/bin`, 아니면 `~/.local/bin` |
+| `DBOPS_REPO` | 받아올 `owner/name` | `x-mesh/dbops` |
+
+`--version` / `--dir` 플래그로도 같은 값을 줄 수 있다. curl과 wget 중 있는 쪽을 쓰고, sha256 도구는 `sha256sum`/`shasum`/`openssl` 중 있는 걸 쓴다.
+
+### `dbops update` — 설치 후 자체 업데이트
+
+첫 설치 이후에는 바이너리가 스스로 갱신한다. 설치된 `dbops`를 원자적으로 교체하므로, 실행 중이던 프로세스가 있어도 안전하다.
+
+```bash
+dbops update                 # 최신 릴리스가 더 새로우면 교체
+dbops update --dry-run       # 무엇을 할지만 출력, 파일은 건드리지 않음
+dbops update --json          # {"action":"installed"|"up-to-date"|"planned", ...}
+dbops update --tag v0.2.0    # 특정 릴리스로 고정 (다운그레이드도 허용)
+dbops update --force         # 같은 버전이어도 다시 받아 덮어씀
+```
+
+동작은 install.sh와 같다 — 릴리스 조회 → 플랫폼에 맞는 아티팩트 다운로드 → 릴리스에 함께 올라간 `SHA256SUMS`와 대조 → 원자적 교체. 토큰도 같은 세 환경변수를 본다(`gh` 폴백은 없다. 서버에는 `gh`가 없으니까).
+
+주의할 점 둘:
+
+- **`/usr/local/bin`에 root 소유로 설치했다면 `sudo dbops update`가 필요하다.** 권한 오류는 그 사실과 대안(`DBOPS_INSTALL_DIR=$HOME/.local/bin`)을 함께 알려준다.
+- **전역 `--insecure`는 `update`에 적용되지 않는다.** 그 플래그는 self-signed 인증서를 쓰는 DB에 붙기 위한 것이고, 자기 자신을 대체할 실행 파일을 받는 경로에서 인증서 검증을 끄는 건 편의가 아니라 취약점이다.
+
+SHA256 대조는 전송 중 손상/절단을 잡는 용도다. `SHA256SUMS`는 바이너리와 같은 릴리스에 들어 있으니 서명이 아니며, 릴리스의 진위는 api.github.com으로의 HTTPS가 담보한다.
+
+## 배포 (빌드 산출물 직접 다루기)
 
 빌드 산출물은 CI가 자동으로 만들거나(태그 push 시 `.github/workflows/release.yml`), 로컬에서 직접 만들 수 있다 (`scripts/release-build.sh` 참고).
 
@@ -82,7 +132,9 @@
 | `aarch64-unknown-linux-musl` | ARM64 리눅스 서버 |
 | `aarch64-apple-darwin` (또는 빌드 호스트의 native 타깃) | 로컬 macOS 개발/터널링용 |
 
-서버 배포는 scp 1회로 끝난다:
+Intel macOS(`x86_64-apple-darwin`)용 아티팩트는 릴리스에 없다. install.sh와 `dbops update` 모두 그 호스트에서는 엉뚱한 바이너리를 내려받는 대신 "소스에서 빌드하라"고 멈춘다. (Apple Silicon에서 Rosetta 셸로 실행한 경우는 `sysctl.proc_translated`로 구분해 arm64 아티팩트를 받는다.)
+
+install.sh를 쓸 수 없는 폐쇄망이라면 서버 배포는 scp 1회로 끝난다:
 
 ```bash
 # 1. scp로 올리고 실행권한 부여
