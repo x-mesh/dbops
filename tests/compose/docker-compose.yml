@@ -7,6 +7,13 @@
 # tests/integration.sh always seeds required state (pg replication write,
 # mongo replset initiation) after `up`.
 #
+# Every host port below is `${VAR:-default}`-interpolated so a second,
+# independent stack (see tests/destructive_matrix.sh, project name
+# "dbops-matrix") can bring up this exact same file under a different port
+# range and run concurrently with tests/integration.sh on the same host.
+# Callers that don't export any of these get the original fixed ports --
+# zero behavior change for tests/integration.sh.
+#
 # MongoDB note: the replica set is initiated with the *internal* compose
 # hostnames (mongo1:27017 etc.) so inter-member replication traffic works.
 # Host-side access (tests/integration.sh, run from the bare-metal cargo
@@ -30,7 +37,7 @@ services:
       POSTGRESQL_PASSWORD: dbops_test_pw
       POSTGRESQL_DATABASE: dbops_test
     ports:
-      - "25432:5432"
+      - "${PG_PRIMARY_HOST_PORT:-25432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d dbops_test"]
       interval: 3s
@@ -50,7 +57,7 @@ services:
       POSTGRESQL_MASTER_PORT_NUMBER: 5432
       POSTGRESQL_PASSWORD: dbops_test_pw
     ports:
-      - "25433:5432"
+      - "${PG_REPLICA_HOST_PORT:-25433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 3s
@@ -61,7 +68,7 @@ services:
     image: mongo:7
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "27217:27017"
+      - "${MONGO1_HOST_PORT:-27217}:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 3s
@@ -72,7 +79,7 @@ services:
     image: mongo:7
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "27218:27017"
+      - "${MONGO2_HOST_PORT:-27218}:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 3s
@@ -83,7 +90,7 @@ services:
     image: mongo:7
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "27219:27017"
+      - "${MONGO3_HOST_PORT:-27219}:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 3s
@@ -114,7 +121,7 @@ services:
       DISABLE_SECURITY_PLUGIN: "true"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
     ports:
-      - "29200:9200"
+      - "${OPENSEARCH_HOST_PORT:-29200}:9200"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
       interval: 3s
@@ -124,7 +131,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "26379:6379"
+      - "${REDIS_HOST_PORT:-26379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s

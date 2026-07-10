@@ -122,3 +122,97 @@ local services need to be running -- the fixture is fully self-contained
 and torn down (`compose down -v`) even if a check fails, via a `trap ...
 EXIT` in `tests/integration.sh`. Exit code `0`/non-zero maps directly to a
 CI pass/fail gate.
+
+## Destructive-command guard matrix (`tests/destructive_matrix.sh`)
+
+`tests/integration.sh`'s SC2/SC3/SC5 matrix never calls `init`/`reset`/
+`seed` -- this second harness is the one that does, cross-checking the
+`frame::guard` authorization gate against every destructive database
+command instead of relying on each command's own unit tests to catch a
+guard-bypass combination.
+
+```sh
+bash tests/destructive_matrix.sh          # up, build, verify, down
+bash tests/destructive_matrix.sh --keep   # same, but leaves the fixture
+                                           # (and its tmp fixture files)
+                                           # running afterward
+```
+
+It brings up its own copy of `tests/compose/docker-compose.yml` under
+project name `dbops-matrix` (only `pg-primary` + the 3 mongo members +
+opensearch -- no `pg-replica`, no `redis`, since this harness never
+exercises replication or redis destructive commands), on a port range
+offset from `tests/integration.sh`'s `dbops-test` project so both can run
+on the same host at once (see the `${VAR:-default}` port interpolation
+added to `docker-compose.yml` for this -- every host port defaults to the
+exact original value, so `tests/integration.sh` is unaffected when it
+doesn't set any of these vars). Same `SKIP_BUILD=1`/`DBOPS_BIN` overrides
+as `tests/integration.sh`.
+
+### The matrix
+
+Per destructive command (`os reset index` / `mongo reset db` /
+`pg reset db`), against a `dbops_matrix_*`-named target this harness
+creates itself and seeds with one identifiable "canary" document/row:
+
+| # | Scenario | Expected exit | Expected state |
+|---|---|---|---|
+| 1 | `--dry-run` | `0` | unchanged |
+| 2 | non-TTY, no `--yes` | `2` | unchanged |
+| 3 | protected profile, `--yes` only (no `--confirm-name`) | `2` | unchanged |
+| 4 | protected profile, `--yes` + `--confirm-name <target>` | `0` | really applied |
+
+State is verified by direct query against each database (`curl`/
+`mongosh`/`psql`), never through `dbops` itself -- same principle as
+`tests/integration.sh`'s `pg_psql`/`mongosh` checks. "Really applied" in
+scenario 4 matches each domain's actual reset semantics: `os reset index`
+drops+recreates (index exists, 0 docs), `pg reset db` drops+recreates
+(database exists, 0 tables), `mongo reset db` only drops -- nothing is
+recreated (database no longer exists at all; see `src/mongo/init.rs`'s
+module doc comment).
+
+The "protected profile" runs (`tests/compose/protected.toml`, profile
+name `protected` under `[safety] protected_profiles`) use the exact same
+`DBOPS_*` connection env vars as the non-protected runs -- the fixture has
+no `[profiles.*]` table, so only `[safety]` participates in resolution and
+every connection field still comes from the environment (see that file's
+header comment).
+
+Beyond the 4-scenario matrix, per database:
+
+- **Missing target**: `reset` against a `dbops_matrix_*` name that was
+  never created exits `1`, with no side effect -- all three domains check
+  existence *before* ever reaching the guard, so this doesn't depend on
+  `--yes`/TTY/protected-profile state at all.
+- **Idempotent init (SC6)**: `os init index --if-not-exists` / `pg init
+  schema` (via the SQL file's own `CREATE TABLE IF NOT EXISTS` -- `pg init
+  schema` has no `--if-not-exists` flag itself) / `mongo init db`
+  (idempotent by construction, no flag needed) each run twice and exit `0`
+  both times.
+- **Seed guard**: `os seed` / `mongo seed`, non-TTY with no `--yes`, exit
+  `2` with no document ever written. `os seed` proves this by pointing
+  `--file` at a path that doesn't exist at all -- `src/os/seed.rs`'s
+  `run_seed()` calls `guard::authorize()` before ever opening the file, so
+  a nonexistent path still exits `2` cleanly. `mongo seed` can't use that
+  trick: `src/mongo/seed.rs`'s `probe_source()` opens the file *before*
+  the guard runs (by design, so `--dry-run` can report an accurate
+  document-count estimate) and would fail at exit `3` on a missing file,
+  never reaching the guard at all -- so this case instead points `--file`
+  at a file that exists but has garbage content, which `probe_source`'s
+  NDJSON path accepts fine (it only counts non-blank lines, it never
+  parses them), letting the guard run and decline at exit `2` before
+  `insert_ndjson` is ever called.
+  - `pg` has **no `seed` subcommand at all** (`src/pg/mod.rs`'s
+    `PgCommand` has `Init`/`Users`/`Reset` but no `Seed`) -- the
+    seed-guard case only covers `os` and `mongo`. The harness logs this as
+    a `[NOTE]` in its summary rather than silently testing 2 of 3
+    databases; add a `pg` case here if a `pg seed` command lands later.
+
+### Requirements
+
+Same as `tests/integration.sh`: Docker with `docker compose` v2, `jq`,
+`cargo`. Fully self-contained and torn down (`compose down -v
+--remove-orphans`) even on failure via a `trap ... EXIT`. Exit code
+`0`/non-zero maps directly to a CI pass/fail gate; run as a separate CI
+job from `tests/integration.sh` (different compose project name and port
+range, so nothing stops them running concurrently on the same runner).
