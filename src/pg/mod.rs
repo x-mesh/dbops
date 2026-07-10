@@ -9,6 +9,11 @@ use crate::frame::{Ctx, ExitCode, HealthArgs};
 
 pub mod client;
 mod health;
+mod queries;
+mod replication;
+mod stats;
+mod tables;
+mod vacuum;
 
 #[derive(Args, Debug)]
 pub struct PgArgs {
@@ -81,6 +86,13 @@ pub enum PgResetTarget {
 pub async fn run(args: &PgArgs, ctx: &Ctx) -> Result<ExitCode> {
     match &args.command {
         PgCommand::Health(health_args) => run_health(ctx, health_args).await,
+        PgCommand::Stats { db } => stats::run(ctx, db.as_deref()).await,
+        PgCommand::Tables { top } => tables::run(ctx, *top).await,
+        PgCommand::Queries { long_running, threshold } => {
+            queries::run(ctx, *long_running, threshold.as_deref()).await
+        }
+        PgCommand::Vacuum => vacuum::run(ctx).await,
+        PgCommand::Replication => replication::run(ctx).await,
         other => anyhow::bail!("dbops pg: not implemented ({other:?})"),
     }
 }
