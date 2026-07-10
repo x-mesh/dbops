@@ -20,6 +20,7 @@ use opensearch::cluster::ClusterHealthParts;
 use opensearch::OpenSearch;
 use serde::Deserialize;
 
+use crate::frame::health;
 use crate::frame::result::{CheckResult, CheckStatus, Metric};
 use crate::frame::HealthArgs;
 
@@ -33,16 +34,22 @@ struct ClusterHealthBody {
     active_shards_percent_as_number: f64,
 }
 
-pub async fn health(client: &OpenSearch, timeout: Duration, args: &HealthArgs) -> CheckResult {
-    let warning = match parse_threshold("--warning", args.warning.as_deref()) {
-        Ok(v) => v,
-        Err(msg) => return unknown(msg),
-    };
-    let critical = match parse_threshold("--critical", args.critical.as_deref()) {
-        Ok(v) => v,
-        Err(msg) => return unknown(msg),
-    };
+/// Parse `--warning`/`--critical` up front. A bad value is a usage error
+/// (exit 3, no nagios line), distinct from every other failure this check
+/// can hit -- callers must check this before calling [`health`], which stays
+/// infallible.
+pub fn parse_args(args: &HealthArgs) -> Result<(Option<u64>, Option<u64>), String> {
+    let warning = parse_threshold("--warning", args.warning.as_deref())?;
+    let critical = parse_threshold("--critical", args.critical.as_deref())?;
+    Ok((warning, critical))
+}
 
+pub async fn health(
+    client: &OpenSearch,
+    timeout: Duration,
+    warning: Option<u64>,
+    critical: Option<u64>,
+) -> CheckResult {
     let cluster = client.cluster();
     let fetch = cluster.health(ClusterHealthParts::None).send();
     match tokio::time::timeout(timeout, fetch).await {
@@ -69,13 +76,28 @@ pub async fn health(client: &OpenSearch, timeout: Duration, args: &HealthArgs) -
     }
 }
 
+/// `unassigned_shards` is a plain count, not a duration -- a value with a
+/// recognized time suffix (`"5s"`, `"500ms"`, ...) is a usage error here even
+/// though the shared parser accepts it as a `Threshold::Duration` for
+/// domains that measure time (`pg`/`mongo`/`redis`).
 fn parse_threshold(flag: &str, raw: Option<&str>) -> Result<Option<u64>, String> {
     match raw {
         None => Ok(None),
-        Some(v) => v
-            .parse::<u64>()
-            .map(Some)
-            .map_err(|_| format!("invalid {flag} value {v:?}: expected a non-negative integer")),
+        Some(v) => {
+            let threshold = health::parse_threshold(v)
+                .map_err(|err| format!("invalid {flag} value {v:?}: {err:#}"))?;
+            let count = threshold.as_count().map_err(|_| {
+                format!(
+                    "invalid {flag} value {v:?}: expected a plain count (e.g. 5), not a duration like 5s/500ms"
+                )
+            })?;
+            if count.fract() != 0.0 {
+                return Err(format!(
+                    "invalid {flag} value {v:?}: expected a non-negative integer"
+                ));
+            }
+            Ok(Some(count as u64))
+        }
     }
 }
 
@@ -295,6 +317,21 @@ mod tests {
     #[test]
     fn parse_threshold_rejects_negative_numbers() {
         assert!(parse_threshold("--critical", Some("-1")).is_err());
+    }
+
+    #[test]
+    fn parse_threshold_accepts_zero() {
+        assert_eq!(parse_threshold("--critical", Some("0")).unwrap(), Some(0));
+    }
+
+    #[test]
+    fn parse_threshold_rejects_a_duration_value() {
+        // os measures a plain shard count, not time -- a duration-style
+        // value ("5s") is a usage error here even though pg/mongo/redis
+        // accept it.
+        let err = parse_threshold("--critical", Some("5s")).unwrap_err();
+        assert!(err.contains("--critical"));
+        assert!(err.contains("5s"));
     }
 
     #[test]

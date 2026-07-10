@@ -107,8 +107,19 @@ pub async fn run(args: &OsArgs, ctx: &Ctx) -> Result<ExitCode> {
 }
 
 async fn run_health(health_args: &HealthArgs, ctx: &Ctx) -> Result<ExitCode> {
+    // A bad --warning/--critical value is a usage error, not a connectivity
+    // problem -- reject it before ever touching the network, with a plain
+    // stderr message and exit 3, not a nagios UNKNOWN line.
+    let (warning, critical) = match health::parse_args(health_args) {
+        Ok(v) => v,
+        Err(err) => {
+            eprintln!("error: {err}");
+            return Ok(ExitCode::from(exit::unix::ARGUMENT_ERROR));
+        }
+    };
+
     let result = match client::connect(&ctx.profile.opensearch, ctx.timeout, ctx.insecure) {
-        Ok(os_client) => health::health(&os_client, ctx.timeout, health_args).await,
+        Ok(os_client) => health::health(&os_client, ctx.timeout, warning, critical).await,
         Err(err) => CheckResult {
             status: CheckStatus::Unknown,
             summary: format!("failed to connect to opensearch: {err:#}"),

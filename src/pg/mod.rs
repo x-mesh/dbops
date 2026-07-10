@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::frame::exit::from_status;
+use crate::frame::exit::{self, from_status};
 use crate::frame::output::render_check;
 use crate::frame::{Ctx, ExitCode, HealthArgs};
 
@@ -183,7 +183,17 @@ pub async fn run(args: &PgArgs, ctx: &Ctx) -> Result<ExitCode> {
 }
 
 async fn run_health(ctx: &Ctx, args: &HealthArgs) -> Result<ExitCode> {
-    let result = health::health(ctx, args).await;
+    // A bad --warning/--critical value is a usage error, not a connectivity
+    // problem -- reject it before ever touching the network, with a plain
+    // stderr message and exit 3, not a nagios UNKNOWN line.
+    let (warning, critical) = match health::parse_args(args) {
+        Ok(v) => v,
+        Err(err) => {
+            eprintln!("error: {err:#}");
+            return Ok(ExitCode::from(exit::unix::ARGUMENT_ERROR));
+        }
+    };
+    let result = health::health(ctx, args, warning, critical).await;
     println!("{}", render_check("pg", "health", &result, ctx.json));
     Ok(ExitCode::from(from_status(result.status)))
 }

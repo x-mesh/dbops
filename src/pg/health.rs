@@ -10,7 +10,7 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use tokio_postgres::Client;
 
-use crate::frame::ctx::parse_timeout;
+use crate::frame::health;
 use crate::frame::result::{CheckResult, CheckStatus, Metric};
 use crate::frame::{Ctx, HealthArgs};
 use crate::pg::client;
@@ -20,8 +20,24 @@ use crate::pg::client;
 /// both predate it, but PRD R35 only commits to 13+).
 const MIN_SUPPORTED_MAJOR_VERSION: u32 = 13;
 
-pub async fn health(ctx: &Ctx, args: &HealthArgs) -> CheckResult {
-    match tokio::time::timeout(ctx.timeout, run(ctx, args)).await {
+/// Parse `--warning`/`--critical` up front. A bad value is a usage error
+/// (exit 3, no nagios line), distinct from every other failure this check
+/// can hit -- callers must check this before calling [`health`], which stays
+/// infallible.
+pub fn parse_args(args: &HealthArgs) -> Result<(Option<Duration>, Option<Duration>)> {
+    let warning = parse_threshold(args.warning.as_deref()).context("invalid --warning value")?;
+    let critical =
+        parse_threshold(args.critical.as_deref()).context("invalid --critical value")?;
+    Ok((warning, critical))
+}
+
+pub async fn health(
+    ctx: &Ctx,
+    args: &HealthArgs,
+    warning: Option<Duration>,
+    critical: Option<Duration>,
+) -> CheckResult {
+    match tokio::time::timeout(ctx.timeout, run(ctx, args, warning, critical)).await {
         Ok(Ok(result)) => result,
         Ok(Err(err)) => unknown(format!("{err:#}")),
         Err(_) => unknown(format!("timed out after {:?}", ctx.timeout)),
@@ -36,13 +52,12 @@ fn unknown(reason: String) -> CheckResult {
     }
 }
 
-async fn run(ctx: &Ctx, args: &HealthArgs) -> Result<CheckResult> {
-    // Parsed before connecting: a bad --warning/--critical value is a usage
-    // error, not a connectivity problem, so it shouldn't cost a round trip
-    // to report.
-    let warning = parse_threshold(args.warning.as_deref()).context("invalid --warning value")?;
-    let critical = parse_threshold(args.critical.as_deref()).context("invalid --critical value")?;
-
+async fn run(
+    ctx: &Ctx,
+    args: &HealthArgs,
+    warning: Option<Duration>,
+    critical: Option<Duration>,
+) -> Result<CheckResult> {
     let pg_client = client::connect(&ctx.profile.postgres, ctx.timeout, ctx.insecure).await?;
 
     warn_if_unsupported_version(&pg_client).await;
@@ -100,8 +115,13 @@ enum Role {
     Standby,
 }
 
+/// Delegates to the shared [`frame::health::parse_threshold`] -- unlike
+/// `frame::ctx::parse_timeout` (`--timeout`-only, forbids `0`), `0` is a
+/// valid lag threshold here. A bare number with no `ms`/`s`/`m` suffix is
+/// treated as a plain seconds count, matching this domain's lag semantics.
 fn parse_threshold(raw: Option<&str>) -> Result<Option<Duration>> {
-    raw.map(parse_timeout).transpose()
+    raw.map(|v| health::parse_threshold(v).map(|t| Duration::from_secs_f64(t.as_seconds())))
+        .transpose()
 }
 
 /// No lag metric (single-instance primary with no replicas, or a standby
@@ -280,6 +300,27 @@ mod tests {
     #[test]
     fn parse_threshold_rejects_garbage() {
         assert!(parse_threshold(Some("not-a-duration")).is_err());
+    }
+
+    #[test]
+    fn parse_threshold_accepts_zero() {
+        assert_eq!(
+            parse_threshold(Some("0s")).unwrap(),
+            Some(Duration::ZERO)
+        );
+        assert_eq!(parse_threshold(Some("0")).unwrap(), Some(Duration::ZERO));
+    }
+
+    #[test]
+    fn parse_threshold_accepts_bare_seconds_and_suffixed_forms() {
+        assert_eq!(
+            parse_threshold(Some("7")).unwrap(),
+            Some(Duration::from_secs(7))
+        );
+        assert_eq!(
+            parse_threshold(Some("500ms")).unwrap(),
+            Some(Duration::from_millis(500))
+        );
     }
 
     #[test]

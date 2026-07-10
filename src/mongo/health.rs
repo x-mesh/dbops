@@ -18,7 +18,7 @@ use mongodb::error::ErrorKind;
 use mongodb::Client;
 
 use crate::frame::result::{CheckResult, CheckStatus, Metric};
-use crate::frame::{Ctx, ExitCode, HealthArgs};
+use crate::frame::{health, Ctx, ExitCode, HealthArgs};
 use crate::mongo::{client, replset_status};
 
 /// Server error code for `replSetGetStatus` run against a node that isn't a
@@ -26,12 +26,18 @@ use crate::mongo::{client, replset_status};
 const NO_REPLICA_SET_CONFIG: i32 = 76;
 
 pub async fn run(ctx: &Ctx, args: &HealthArgs) -> Result<ExitCode> {
-    let warning = args.warning.as_deref().map(parse_lag_seconds).transpose()?;
-    let critical = args
-        .critical
-        .as_deref()
-        .map(parse_lag_seconds)
-        .transpose()?;
+    // A bad --warning/--critical value is a usage error, not a connectivity
+    // problem: it's handled here, directly, with a plain stderr message and
+    // exit 3 -- not propagated as a bare `Err` (which would surface through
+    // main.rs's generic handler as exit 1, outside the nagios UNKNOWN(3)
+    // vocabulary every other failure mode in this check uses).
+    let (warning, critical) = match parse_args(args) {
+        Ok(v) => v,
+        Err(err) => {
+            eprintln!("error: {err:#}");
+            return Ok(ExitCode::from(crate::frame::exit::unix::ARGUMENT_ERROR));
+        }
+    };
 
     let result = check(ctx, warning, critical).await;
     println!(
@@ -41,6 +47,22 @@ pub async fn run(ctx: &Ctx, args: &HealthArgs) -> Result<ExitCode> {
     Ok(ExitCode::from(crate::frame::exit::from_status(
         result.status,
     )))
+}
+
+fn parse_args(args: &HealthArgs) -> Result<(Option<i64>, Option<i64>)> {
+    let warning = args
+        .warning
+        .as_deref()
+        .map(parse_lag_seconds)
+        .transpose()
+        .context("invalid --warning value")?;
+    let critical = args
+        .critical
+        .as_deref()
+        .map(parse_lag_seconds)
+        .transpose()
+        .context("invalid --critical value")?;
+    Ok((warning, critical))
 }
 
 enum ReplStatusOutcome {
@@ -143,15 +165,15 @@ fn unknown(summary: String) -> CheckResult {
     }
 }
 
-/// Parse a `--warning`/`--critical` lag threshold: a bare integer or an
-/// integer with a trailing `s`, both meaning seconds (e.g. `10`, `10s`).
+/// Parse a `--warning`/`--critical` lag threshold via the shared duration/
+/// count parser (`0` allowed -- "alert on any lag at all"). A bare number
+/// (no suffix) is seconds, matching this domain's replication-lag semantics
+/// (same convention `pg` uses); `10s`/`500ms`/`2m` are also accepted now
+/// instead of only a bare integer or integer+`s`.
 fn parse_lag_seconds(raw: &str) -> Result<i64> {
-    let trimmed = raw.trim().trim_end_matches('s');
-    trimmed.parse::<i64>().with_context(|| {
-        format!(
-            "invalid lag threshold {raw:?}: expected an integer number of seconds (e.g. 10 or 10s)"
-        )
-    })
+    let threshold =
+        health::parse_threshold(raw).with_context(|| format!("invalid lag threshold {raw:?}"))?;
+    Ok(threshold.as_seconds().round() as i64)
 }
 
 #[cfg(test)]
@@ -168,5 +190,35 @@ mod tests {
     fn parse_lag_seconds_rejects_garbage() {
         assert!(parse_lag_seconds("abc").is_err());
         assert!(parse_lag_seconds("").is_err());
+    }
+
+    #[test]
+    fn parse_lag_seconds_accepts_zero() {
+        assert_eq!(parse_lag_seconds("0").unwrap(), 0);
+        assert_eq!(parse_lag_seconds("0s").unwrap(), 0);
+    }
+
+    #[test]
+    fn parse_lag_seconds_accepts_duration_suffixes() {
+        assert_eq!(parse_lag_seconds("500ms").unwrap(), 1); // rounds to nearest second
+        assert_eq!(parse_lag_seconds("2m").unwrap(), 120);
+    }
+
+    #[test]
+    fn parse_args_surfaces_a_bad_warning_as_an_error() {
+        let args = HealthArgs {
+            warning: Some("not-a-number".to_string()),
+            critical: None,
+        };
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_args_accepts_absent_thresholds() {
+        let args = HealthArgs {
+            warning: None,
+            critical: None,
+        };
+        assert_eq!(parse_args(&args).unwrap(), (None, None));
     }
 }
