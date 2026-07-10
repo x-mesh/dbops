@@ -8,9 +8,11 @@ use crate::frame::{Ctx, ExitCode, HealthArgs};
 pub mod client;
 mod connections;
 mod health;
+mod init;
 mod oplog;
 mod replset;
 mod replset_status;
+mod seed;
 mod stats;
 
 #[derive(Args, Debug)]
@@ -39,10 +41,18 @@ pub enum MongoCommand {
         target: MongoResetTarget,
     },
     Seed {
+        /// Target collection: "db.collection", or a bare collection name paired with --db
         #[arg(long)]
         collection: String,
+        /// Target database — required when --collection is a bare name (no ".")
+        #[arg(long)]
+        db: Option<String>,
+        /// NDJSON file (one JSON document per line), or a JSON array under 50MB
         #[arg(long)]
         file: PathBuf,
+        /// Must match the single planned target to authorize against a protected profile
+        #[arg(long = "confirm-name")]
+        confirm_name: Option<String>,
     },
 }
 
@@ -50,6 +60,9 @@ pub enum MongoCommand {
 pub enum MongoInitTarget {
     Db {
         name: String,
+        /// Must match the single planned target to authorize against a protected profile
+        #[arg(long = "confirm-name")]
+        confirm_name: Option<String>,
     },
     User {
         name: String,
@@ -57,12 +70,26 @@ pub enum MongoInitTarget {
         role: String,
         #[arg(long)]
         db: String,
+        /// Visible via `ps`/shell history — prefer the DBOPS_NEW_USER_PASSWORD env var
+        #[arg(long)]
+        password: Option<String>,
+        /// Treat an already-existing user as success instead of failing
+        #[arg(long = "if-not-exists")]
+        if_not_exists: bool,
+        /// Must match the single planned target to authorize against a protected profile
+        #[arg(long = "confirm-name")]
+        confirm_name: Option<String>,
     },
 }
 
 #[derive(Subcommand, Debug)]
 pub enum MongoResetTarget {
-    Db { name: String },
+    Db {
+        name: String,
+        /// Must match the single planned target to authorize against a protected profile
+        #[arg(long = "confirm-name")]
+        confirm_name: Option<String>,
+    },
 }
 
 pub async fn run(args: &MongoArgs, ctx: &Ctx) -> Result<ExitCode> {
@@ -72,6 +99,49 @@ pub async fn run(args: &MongoArgs, ctx: &Ctx) -> Result<ExitCode> {
         MongoCommand::Stats { db } => stats::run(ctx, db.as_deref()).await,
         MongoCommand::Oplog => oplog::run(ctx).await,
         MongoCommand::Connections => connections::run(ctx).await,
-        _ => anyhow::bail!("dbops mongo: not implemented ({:?})", args.command),
+        MongoCommand::Init { target } => match target {
+            MongoInitTarget::Db { name, confirm_name } => {
+                init::run_init_db(ctx, name, confirm_name.as_deref()).await
+            }
+            MongoInitTarget::User {
+                name,
+                role,
+                db,
+                password,
+                if_not_exists,
+                confirm_name,
+            } => {
+                init::run_init_user(
+                    ctx,
+                    name,
+                    role,
+                    db,
+                    password.as_deref(),
+                    *if_not_exists,
+                    confirm_name.as_deref(),
+                )
+                .await
+            }
+        },
+        MongoCommand::Reset { target } => match target {
+            MongoResetTarget::Db { name, confirm_name } => {
+                init::run_reset_db(ctx, name, confirm_name.as_deref()).await
+            }
+        },
+        MongoCommand::Seed {
+            collection,
+            db,
+            file,
+            confirm_name,
+        } => {
+            seed::run(
+                ctx,
+                collection,
+                db.as_deref(),
+                file,
+                confirm_name.as_deref(),
+            )
+            .await
+        }
     }
 }
