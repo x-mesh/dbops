@@ -28,7 +28,9 @@ fn read_tlv(buf: &[u8]) -> Option<(u8, &[u8], &[u8])> {
             return None;
         }
         let len_bytes = buf.get(2..2 + n)?;
-        let len = len_bytes.iter().fold(0usize, |acc, &b| (acc << 8) | b as usize);
+        let len = len_bytes
+            .iter()
+            .fold(0usize, |acc, &b| (acc << 8) | b as usize);
         (len, 2 + n)
     };
     let content = buf.get(header_len..header_len + len)?;

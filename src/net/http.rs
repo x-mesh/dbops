@@ -32,8 +32,14 @@ pub async fn check(
     warning: Option<&str>,
     critical: Option<&str>,
 ) -> Result<ExitCode> {
-    let warning_dur = warning.map(parse_timeout).transpose().context("--warning")?;
-    let critical_dur = critical.map(parse_timeout).transpose().context("--critical")?;
+    let warning_dur = warning
+        .map(parse_timeout)
+        .transpose()
+        .context("--warning")?;
+    let critical_dur = critical
+        .map(parse_timeout)
+        .transpose()
+        .context("--critical")?;
 
     let client = reqwest::Client::builder()
         .timeout(ctx.timeout)
@@ -111,7 +117,10 @@ fn evaluate_response(
     }
 
     if is_https {
-        match tls_info.and_then(|info| info.peer_certificate()).and_then(cert::parse_not_after) {
+        match tls_info
+            .and_then(|info| info.peer_certificate())
+            .and_then(cert::parse_not_after)
+        {
             Some(not_after_unix) => {
                 let days_left = cert::days_until(not_after_unix);
                 metrics.push(Metric {
@@ -138,10 +147,18 @@ fn evaluate_response(
     let summary = if reasons.is_empty() {
         format!("{status_code} in {}ms", elapsed.as_millis())
     } else {
-        format!("{status_code} in {}ms; {}", elapsed.as_millis(), reasons.join(", "))
+        format!(
+            "{status_code} in {}ms; {}",
+            elapsed.as_millis(),
+            reasons.join(", ")
+        )
     };
 
-    CheckResult { status, summary, metrics }
+    CheckResult {
+        status,
+        summary,
+        metrics,
+    }
 }
 
 /// Status-code -> check-status mapping (discretionary): an explicit
@@ -151,12 +168,18 @@ fn evaluate_response(
 fn classify_status(status: reqwest::StatusCode, expect: Option<u16>) -> (CheckStatus, Vec<String>) {
     if let Some(expect) = expect {
         if status.as_u16() != expect {
-            return (CheckStatus::Critical, vec![format!("expected status {expect}, got {status}")]);
+            return (
+                CheckStatus::Critical,
+                vec![format!("expected status {expect}, got {status}")],
+            );
         }
         return (CheckStatus::Ok, vec![]);
     }
     if status.is_server_error() {
-        (CheckStatus::Critical, vec![format!("server error {status}")])
+        (
+            CheckStatus::Critical,
+            vec![format!("server error {status}")],
+        )
     } else if status.is_client_error() {
         (CheckStatus::Warning, vec![format!("client error {status}")])
     } else {
@@ -198,15 +221,33 @@ mod tests {
 
     #[test]
     fn classify_status_treats_5xx_as_critical_and_4xx_as_warning() {
-        assert_eq!(classify_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR, None).0, CheckStatus::Critical);
-        assert_eq!(classify_status(reqwest::StatusCode::NOT_FOUND, None).0, CheckStatus::Warning);
-        assert_eq!(classify_status(reqwest::StatusCode::OK, None).0, CheckStatus::Ok);
+        assert_eq!(
+            classify_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR, None).0,
+            CheckStatus::Critical
+        );
+        assert_eq!(
+            classify_status(reqwest::StatusCode::NOT_FOUND, None).0,
+            CheckStatus::Warning
+        );
+        assert_eq!(
+            classify_status(reqwest::StatusCode::OK, None).0,
+            CheckStatus::Ok
+        );
     }
 
     #[test]
     fn escalate_never_downgrades() {
-        assert_eq!(escalate(CheckStatus::Critical, CheckStatus::Warning), CheckStatus::Critical);
-        assert_eq!(escalate(CheckStatus::Ok, CheckStatus::Warning), CheckStatus::Warning);
-        assert_eq!(escalate(CheckStatus::Warning, CheckStatus::Ok), CheckStatus::Warning);
+        assert_eq!(
+            escalate(CheckStatus::Critical, CheckStatus::Warning),
+            CheckStatus::Critical
+        );
+        assert_eq!(
+            escalate(CheckStatus::Ok, CheckStatus::Warning),
+            CheckStatus::Warning
+        );
+        assert_eq!(
+            escalate(CheckStatus::Warning, CheckStatus::Ok),
+            CheckStatus::Warning
+        );
     }
 }

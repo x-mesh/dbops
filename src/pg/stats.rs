@@ -70,7 +70,10 @@ async fn fetch(pg_client: &Client, db: Option<&str>) -> Result<StatsData> {
         .context("unexpected pg_database_size row shape")?;
 
     let connections_used: i64 = pg_client
-        .query_one("SELECT count(*) FROM pg_stat_activity WHERE datname = $1", &[&database])
+        .query_one(
+            "SELECT count(*) FROM pg_stat_activity WHERE datname = $1",
+            &[&database],
+        )
         .await
         .context("pg_stat_activity connection count query failed")?
         .try_get(0)
@@ -82,7 +85,10 @@ async fn fetch(pg_client: &Client, db: Option<&str>) -> Result<StatsData> {
         .context("SHOW max_connections failed")?
         .try_get(0)
         .context("unexpected max_connections row shape")?;
-    let connections_max: i64 = max_raw.trim().parse().context("failed to parse max_connections")?;
+    let connections_max: i64 = max_raw
+        .trim()
+        .parse()
+        .context("failed to parse max_connections")?;
 
     let idle_in_transaction: i64 = pg_client
         .query_one(
@@ -94,7 +100,13 @@ async fn fetch(pg_client: &Client, db: Option<&str>) -> Result<StatsData> {
         .try_get(0)
         .context("unexpected idle-in-transaction row shape")?;
 
-    Ok(StatsData { database, db_size_pretty, connections_used, connections_max, idle_in_transaction })
+    Ok(StatsData {
+        database,
+        db_size_pretty,
+        connections_used,
+        connections_max,
+        idle_in_transaction,
+    })
 }
 
 /// Pure: fetched values -> the rendered field/value report. `connections_pct`
@@ -104,7 +116,10 @@ fn build_report(data: &StatsData) -> StatReport {
     let connections_pct = if data.connections_max == 0 {
         "-".to_string()
     } else {
-        format!("{:.1}%", data.connections_used as f64 / data.connections_max as f64 * 100.0)
+        format!(
+            "{:.1}%",
+            data.connections_used as f64 / data.connections_max as f64 * 100.0
+        )
     };
 
     StatReport {
@@ -112,10 +127,19 @@ fn build_report(data: &StatsData) -> StatReport {
         rows: vec![
             vec!["database".to_string(), data.database.clone()],
             vec!["db_size".to_string(), data.db_size_pretty.clone()],
-            vec!["connections_used".to_string(), data.connections_used.to_string()],
-            vec!["connections_max".to_string(), data.connections_max.to_string()],
+            vec![
+                "connections_used".to_string(),
+                data.connections_used.to_string(),
+            ],
+            vec![
+                "connections_max".to_string(),
+                data.connections_max.to_string(),
+            ],
             vec!["connections_pct".to_string(), connections_pct],
-            vec!["idle_in_transaction".to_string(), data.idle_in_transaction.to_string()],
+            vec![
+                "idle_in_transaction".to_string(),
+                data.idle_in_transaction.to_string(),
+            ],
         ],
     }
 }
@@ -138,17 +162,31 @@ mod tests {
     fn builds_expected_rows() {
         let report = build_report(&sample(42, 200, 3));
         assert_eq!(report.columns, vec!["metric", "value"]);
-        assert!(report.rows.contains(&vec!["database".to_string(), "app".to_string()]));
-        assert!(report.rows.contains(&vec!["db_size".to_string(), "23 MB".to_string()]));
-        assert!(report.rows.contains(&vec!["connections_used".to_string(), "42".to_string()]));
-        assert!(report.rows.contains(&vec!["connections_max".to_string(), "200".to_string()]));
-        assert!(report.rows.contains(&vec!["connections_pct".to_string(), "21.0%".to_string()]));
-        assert!(report.rows.contains(&vec!["idle_in_transaction".to_string(), "3".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["database".to_string(), "app".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["db_size".to_string(), "23 MB".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["connections_used".to_string(), "42".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["connections_max".to_string(), "200".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["connections_pct".to_string(), "21.0%".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["idle_in_transaction".to_string(), "3".to_string()]));
     }
 
     #[test]
     fn zero_max_connections_is_dash_not_fabricated_zero() {
         let report = build_report(&sample(0, 0, 0));
-        assert!(report.rows.contains(&vec!["connections_pct".to_string(), "-".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["connections_pct".to_string(), "-".to_string()]));
     }
 }

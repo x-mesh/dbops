@@ -72,7 +72,13 @@ pub fn parse_members(doc: &Document) -> Result<Vec<MemberInfo>> {
             }
         };
 
-        members.push(MemberInfo { name, state, health, lag_secs, last_heartbeat });
+        members.push(MemberInfo {
+            name,
+            state,
+            health,
+            lag_secs,
+            last_heartbeat,
+        });
     }
 
     Ok(members)
@@ -94,7 +100,11 @@ pub struct Judgement {
 /// - PRIMARY present, all healthy -> OK
 /// - independently, max replication lag crossing `warning_secs`/`critical_secs`
 ///   raises the status to at least that level (never lowers it).
-pub fn judge_replset(members: &[MemberInfo], warning_secs: Option<i64>, critical_secs: Option<i64>) -> Judgement {
+pub fn judge_replset(
+    members: &[MemberInfo],
+    warning_secs: Option<i64>,
+    critical_secs: Option<i64>,
+) -> Judgement {
     let primary = members.iter().find(|m| m.state == "PRIMARY");
     let unhealthy: Vec<&MemberInfo> = members.iter().filter(|m| m.health < 1.0).collect();
     let max_lag = members.iter().filter_map(|m| m.lag_secs).max();
@@ -128,7 +138,12 @@ pub fn judge_replset(members: &[MemberInfo], warning_secs: Option<i64>, critical
         }
     };
 
-    Judgement { status, summary, max_lag_secs: max_lag, unhealthy_count: unhealthy.len() }
+    Judgement {
+        status,
+        summary,
+        max_lag_secs: max_lag,
+        unhealthy_count: unhealthy.len(),
+    }
 }
 
 fn severity_rank(status: CheckStatus) -> u8 {

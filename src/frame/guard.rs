@@ -48,7 +48,11 @@ pub enum GuardDecision {
 ///    a chance to type the name at a prompt instead.
 /// 4. Interactive and `!ctx.yes` — one last "really do this?" prompt.
 /// 5. Otherwise — `Proceed`.
-pub fn authorize(ctx: &Ctx, plan: &PlanPreview, confirm_name: Option<&str>) -> Result<GuardDecision> {
+pub fn authorize(
+    ctx: &Ctx,
+    plan: &PlanPreview,
+    confirm_name: Option<&str>,
+) -> Result<GuardDecision> {
     if ctx.dry_run {
         println!("{}", plan.render(ctx.json));
         return Ok(GuardDecision::DryRun);
@@ -64,7 +68,13 @@ pub fn authorize(ctx: &Ctx, plan: &PlanPreview, confirm_name: Option<&str>) -> R
     let mut yes = ctx.yes;
 
     loop {
-        match evaluate(is_tty, yes, ctx.profile.protected, confirm_name.as_deref(), expected_name) {
+        match evaluate(
+            is_tty,
+            yes,
+            ctx.profile.protected,
+            confirm_name.as_deref(),
+            expected_name,
+        ) {
             Verdict::Proceed => return Ok(GuardDecision::Proceed),
             Verdict::DeclinedNonInteractive => {
                 eprintln!(
@@ -82,7 +92,10 @@ pub fn authorize(ctx: &Ctx, plan: &PlanPreview, confirm_name: Option<&str>) -> R
                 return Ok(GuardDecision::Declined);
             }
             Verdict::NeedsNameConfirmation => {
-                eprintln!("profile '{}' is protected — type its name to continue", ctx.profile.name);
+                eprintln!(
+                    "profile '{}' is protected — type its name to continue",
+                    ctx.profile.name
+                );
                 let typed: String = Input::new()
                     .with_prompt("confirm target name")
                     .interact_text()
@@ -91,7 +104,10 @@ pub fn authorize(ctx: &Ctx, plan: &PlanPreview, confirm_name: Option<&str>) -> R
             }
             Verdict::NeedsFinalConfirmation => {
                 let proceed = Confirm::new()
-                    .with_prompt(format!("apply {} action(s)? this cannot be undone", plan.actions.len()))
+                    .with_prompt(format!(
+                        "apply {} action(s)? this cannot be undone",
+                        plan.actions.len()
+                    ))
                     .default(false)
                     .interact()
                     .context("failed to read confirmation prompt")?;
@@ -128,7 +144,8 @@ fn evaluate(
         return Verdict::DeclinedNonInteractive;
     }
 
-    let name_matches = matches!((confirm_name, expected_name), (Some(given), Some(exp)) if given == exp);
+    let name_matches =
+        matches!((confirm_name, expected_name), (Some(given), Some(exp)) if given == exp);
 
     if protected && !name_matches {
         return if is_tty {
@@ -185,7 +202,10 @@ mod tests {
 
     #[test]
     fn non_tty_without_yes_is_declined() {
-        assert_eq!(evaluate(false, false, false, None, None), Verdict::DeclinedNonInteractive);
+        assert_eq!(
+            evaluate(false, false, false, None, None),
+            Verdict::DeclinedNonInteractive
+        );
     }
 
     #[test]
@@ -203,23 +223,38 @@ mod tests {
 
     #[test]
     fn protected_missing_confirm_name_non_tty_is_declined() {
-        assert_eq!(evaluate(false, true, true, None, Some("prod")), Verdict::DeclinedNameMismatch);
+        assert_eq!(
+            evaluate(false, true, true, None, Some("prod")),
+            Verdict::DeclinedNameMismatch
+        );
     }
 
     #[test]
     fn protected_name_match_and_yes_proceeds() {
-        assert_eq!(evaluate(false, true, true, Some("prod"), Some("prod")), Verdict::Proceed);
-        assert_eq!(evaluate(true, true, true, Some("prod"), Some("prod")), Verdict::Proceed);
+        assert_eq!(
+            evaluate(false, true, true, Some("prod"), Some("prod")),
+            Verdict::Proceed
+        );
+        assert_eq!(
+            evaluate(true, true, true, Some("prod"), Some("prod")),
+            Verdict::Proceed
+        );
     }
 
     #[test]
     fn protected_name_mismatch_tty_asks_to_retype_instead_of_declining() {
-        assert_eq!(evaluate(true, true, true, None, Some("prod")), Verdict::NeedsNameConfirmation);
+        assert_eq!(
+            evaluate(true, true, true, None, Some("prod")),
+            Verdict::NeedsNameConfirmation
+        );
     }
 
     #[test]
     fn tty_without_yes_and_unprotected_asks_for_final_confirmation() {
-        assert_eq!(evaluate(true, false, false, None, None), Verdict::NeedsFinalConfirmation);
+        assert_eq!(
+            evaluate(true, false, false, None, None),
+            Verdict::NeedsFinalConfirmation
+        );
     }
 
     #[test]
@@ -231,8 +266,14 @@ mod tests {
     fn ambiguous_plan_target_never_satisfies_protected_confirmation() {
         // expected_name = None happens when a plan touches more than one
         // distinct target (see PlanPreview::confirm_target).
-        assert_eq!(evaluate(false, true, true, Some("prod"), None), Verdict::DeclinedNameMismatch);
-        assert_eq!(evaluate(true, true, true, Some("prod"), None), Verdict::NeedsNameConfirmation);
+        assert_eq!(
+            evaluate(false, true, true, Some("prod"), None),
+            Verdict::DeclinedNameMismatch
+        );
+        assert_eq!(
+            evaluate(true, true, true, Some("prod"), None),
+            Verdict::NeedsNameConfirmation
+        );
     }
 
     // --- authorize(): dry-run short-circuits before any TTY/prompt logic ---

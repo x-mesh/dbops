@@ -15,7 +15,10 @@ use crate::redis::connect;
 pub async fn run(args: &HealthArgs, ctx: &Ctx) -> Result<ExitCode> {
     let result = check(args, ctx).await;
     let code = exit::from_status(result.status);
-    println!("{}", output::render_check("redis", "health", &result, ctx.json));
+    println!(
+        "{}",
+        output::render_check("redis", "health", &result, ctx.json)
+    );
     Ok(ExitCode::from(code))
 }
 
@@ -49,7 +52,11 @@ async fn check(args: &HealthArgs, ctx: &Ctx) -> CheckResult {
 }
 
 fn unknown(summary: String) -> CheckResult {
-    CheckResult { status: CheckStatus::Unknown, summary, metrics: vec![] }
+    CheckResult {
+        status: CheckStatus::Unknown,
+        summary,
+        metrics: vec![],
+    }
 }
 
 /// Pure: response time (ms) + configured thresholds -> nagios status.
@@ -82,26 +89,41 @@ mod tests {
 
     #[test]
     fn ok_when_below_every_threshold() {
-        assert_eq!(evaluate_thresholds(5.0, &args(Some("50"), Some("100"))), CheckStatus::Ok);
+        assert_eq!(
+            evaluate_thresholds(5.0, &args(Some("50"), Some("100"))),
+            CheckStatus::Ok
+        );
     }
 
     #[test]
     fn warning_at_or_above_warning_threshold() {
-        assert_eq!(evaluate_thresholds(50.0, &args(Some("50"), Some("100"))), CheckStatus::Warning);
+        assert_eq!(
+            evaluate_thresholds(50.0, &args(Some("50"), Some("100"))),
+            CheckStatus::Warning
+        );
     }
 
     #[test]
     fn critical_at_or_above_critical_threshold() {
-        assert_eq!(evaluate_thresholds(150.0, &args(Some("50"), Some("100"))), CheckStatus::Critical);
+        assert_eq!(
+            evaluate_thresholds(150.0, &args(Some("50"), Some("100"))),
+            CheckStatus::Critical
+        );
     }
 
     #[test]
     fn critical_wins_when_both_thresholds_are_crossed() {
-        assert_eq!(evaluate_thresholds(200.0, &args(Some("50"), Some("100"))), CheckStatus::Critical);
+        assert_eq!(
+            evaluate_thresholds(200.0, &args(Some("50"), Some("100"))),
+            CheckStatus::Critical
+        );
     }
 
     #[test]
     fn ok_when_no_thresholds_configured() {
-        assert_eq!(evaluate_thresholds(99999.0, &args(None, None)), CheckStatus::Ok);
+        assert_eq!(
+            evaluate_thresholds(99999.0, &args(None, None)),
+            CheckStatus::Ok
+        );
     }
 }

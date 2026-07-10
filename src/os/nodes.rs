@@ -57,10 +57,16 @@ pub async fn nodes(client: &OpenSearch, timeout: Duration) -> Result<StatReport>
             vec![
                 name.clone(),
                 role_info.map_or_else(|| "?".to_string(), |r| r.role.clone()),
-                role_info.map_or_else(|| "?".to_string(), |r| if r.master { "*" } else { "-" }.to_string()),
-                stat.disk_used_pct.map_or_else(|| "?".to_string(), |v| format!("{v:.1}%")),
-                stat.disk_used_pct.map_or_else(|| "-".to_string(), watermark_label),
-                stat.heap_used_pct.map_or_else(|| "?".to_string(), |v| format!("{v:.1}%")),
+                role_info.map_or_else(
+                    || "?".to_string(),
+                    |r| if r.master { "*" } else { "-" }.to_string(),
+                ),
+                stat.disk_used_pct
+                    .map_or_else(|| "?".to_string(), |v| format!("{v:.1}%")),
+                stat.disk_used_pct
+                    .map_or_else(|| "-".to_string(), watermark_label),
+                stat.heap_used_pct
+                    .map_or_else(|| "?".to_string(), |v| format!("{v:.1}%")),
             ]
         })
         .collect();
@@ -82,17 +88,32 @@ fn watermark_label(disk_used_pct: f64) -> String {
 
 async fn fetch_roles(client: &OpenSearch, timeout: Duration) -> Result<BTreeMap<String, RoleInfo>> {
     let cat = client.cat();
-    let fut = cat.nodes().format("json").h(&["name", "node.role", "master"]).send();
+    let fut = cat
+        .nodes()
+        .format("json")
+        .h(&["name", "node.role", "master"])
+        .send();
     let response = tokio::time::timeout(timeout, fut)
         .await
         .context("_cat/nodes timed out")?
         .context("failed to query _cat/nodes")?;
-    let body: Vec<Value> = response.json().await.context("failed to parse _cat/nodes response")?;
+    let body: Vec<Value> = response
+        .json()
+        .await
+        .context("failed to parse _cat/nodes response")?;
 
     let mut out = BTreeMap::new();
     for entry in body {
-        let name = entry.get("name").and_then(Value::as_str).unwrap_or("?").to_string();
-        let role = entry.get("node.role").and_then(Value::as_str).unwrap_or("?").to_string();
+        let name = entry
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or("?")
+            .to_string();
+        let role = entry
+            .get("node.role")
+            .and_then(Value::as_str)
+            .unwrap_or("?")
+            .to_string();
         let master = entry.get("master").and_then(Value::as_str) == Some("*");
         out.insert(name, RoleInfo { role, master });
     }
@@ -101,12 +122,17 @@ async fn fetch_roles(client: &OpenSearch, timeout: Duration) -> Result<BTreeMap<
 
 async fn fetch_stats(client: &OpenSearch, timeout: Duration) -> Result<BTreeMap<String, NodeStat>> {
     let nodes_ns = client.nodes();
-    let fut = nodes_ns.stats(NodesStatsParts::Metric(&["fs", "jvm"])).send();
+    let fut = nodes_ns
+        .stats(NodesStatsParts::Metric(&["fs", "jvm"]))
+        .send();
     let response = tokio::time::timeout(timeout, fut)
         .await
         .context("_nodes/stats timed out")?
         .context("failed to query _nodes/stats")?;
-    let body: Value = response.json().await.context("failed to parse _nodes/stats response")?;
+    let body: Value = response
+        .json()
+        .await
+        .context("failed to parse _nodes/stats response")?;
 
     let nodes_obj = body
         .get("nodes")
@@ -115,15 +141,30 @@ async fn fetch_stats(client: &OpenSearch, timeout: Duration) -> Result<BTreeMap<
 
     let mut out = BTreeMap::new();
     for node in nodes_obj.values() {
-        let name = node.get("name").and_then(Value::as_str).unwrap_or("?").to_string();
+        let name = node
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or("?")
+            .to_string();
         let disk_used_pct = node
             .pointer("/fs/total/total_in_bytes")
             .and_then(Value::as_f64)
-            .zip(node.pointer("/fs/total/available_in_bytes").and_then(Value::as_f64))
+            .zip(
+                node.pointer("/fs/total/available_in_bytes")
+                    .and_then(Value::as_f64),
+            )
             .filter(|(total, _)| *total > 0.0)
             .map(|(total, avail)| (total - avail) / total * 100.0);
-        let heap_used_pct = node.pointer("/jvm/mem/heap_used_percent").and_then(Value::as_f64);
-        out.insert(name, NodeStat { disk_used_pct, heap_used_pct });
+        let heap_used_pct = node
+            .pointer("/jvm/mem/heap_used_percent")
+            .and_then(Value::as_f64);
+        out.insert(
+            name,
+            NodeStat {
+                disk_used_pct,
+                heap_used_pct,
+            },
+        );
     }
     Ok(out)
 }

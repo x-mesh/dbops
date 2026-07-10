@@ -4,8 +4,8 @@ pub mod ctx;
 pub mod exit;
 pub mod guard;
 pub mod health;
-pub mod plan;
 pub mod output;
+pub mod plan;
 pub mod result;
 pub mod secret;
 

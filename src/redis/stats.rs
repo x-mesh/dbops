@@ -46,7 +46,10 @@ fn build_report(raw: &str) -> StatReport {
         rows: vec![
             vec!["used_memory".to_string(), get("used_memory")],
             vec!["maxmemory".to_string(), get("maxmemory")],
-            vec!["mem_fragmentation_ratio".to_string(), get("mem_fragmentation_ratio")],
+            vec![
+                "mem_fragmentation_ratio".to_string(),
+                get("mem_fragmentation_ratio"),
+            ],
             vec!["evicted_keys".to_string(), get("evicted_keys")],
         ],
     }

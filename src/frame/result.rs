@@ -65,9 +65,18 @@ mod tests {
     #[test]
     fn check_status_serializes_to_nagios_vocabulary() {
         assert_eq!(serde_json::to_string(&CheckStatus::Ok).unwrap(), "\"OK\"");
-        assert_eq!(serde_json::to_string(&CheckStatus::Warning).unwrap(), "\"WARNING\"");
-        assert_eq!(serde_json::to_string(&CheckStatus::Critical).unwrap(), "\"CRITICAL\"");
-        assert_eq!(serde_json::to_string(&CheckStatus::Unknown).unwrap(), "\"UNKNOWN\"");
+        assert_eq!(
+            serde_json::to_string(&CheckStatus::Warning).unwrap(),
+            "\"WARNING\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CheckStatus::Critical).unwrap(),
+            "\"CRITICAL\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CheckStatus::Unknown).unwrap(),
+            "\"UNKNOWN\""
+        );
     }
 
     #[test]

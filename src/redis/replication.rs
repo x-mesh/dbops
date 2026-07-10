@@ -17,14 +17,18 @@ pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
         }
     };
 
-    let raw =
-        match connect::call::<String>(ctx, redis::cmd("INFO").arg("replication").query_async(&mut conn)).await {
-            Ok(raw) => raw,
-            Err(err) => {
-                eprintln!("error: {err:#}");
-                return Ok(ExitCode::from(unix::CONNECTION_FAILED));
-            }
-        };
+    let raw = match connect::call::<String>(
+        ctx,
+        redis::cmd("INFO").arg("replication").query_async(&mut conn),
+    )
+    .await
+    {
+        Ok(raw) => raw,
+        Err(err) => {
+            eprintln!("error: {err:#}");
+            return Ok(ExitCode::from(unix::CONNECTION_FAILED));
+        }
+    };
 
     let report = build_report(&raw);
     println!("{}", output::render_stat(&report, ctx.json));
@@ -41,7 +45,10 @@ pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
 /// columns) is what lets both shapes fit the same `StatReport` type.
 fn build_report(raw: &str) -> StatReport {
     let fields = info::parse_info(raw);
-    let role = fields.get("role").cloned().unwrap_or_else(|| "unknown".to_string());
+    let role = fields
+        .get("role")
+        .cloned()
+        .unwrap_or_else(|| "unknown".to_string());
     let mut rows = vec![vec!["role".to_string(), role.clone()]];
 
     if role == "master" {
@@ -57,12 +64,18 @@ fn build_report(raw: &str) -> StatReport {
 }
 
 fn master_rows(fields: &std::collections::HashMap<String, String>) -> Vec<Vec<String>> {
-    let connected_slaves = fields.get("connected_slaves").cloned().unwrap_or_else(|| "0".to_string());
+    let connected_slaves = fields
+        .get("connected_slaves")
+        .cloned()
+        .unwrap_or_else(|| "0".to_string());
     let mut rows = vec![
         vec!["connected_slaves".to_string(), connected_slaves.clone()],
         vec![
             "master_repl_offset".to_string(),
-            fields.get("master_repl_offset").cloned().unwrap_or_else(|| "0".to_string()),
+            fields
+                .get("master_repl_offset")
+                .cloned()
+                .unwrap_or_else(|| "0".to_string()),
         ],
     ];
 
@@ -88,17 +101,30 @@ fn master_rows(fields: &std::collections::HashMap<String, String>) -> Vec<Vec<St
 
 fn replica_rows(fields: &std::collections::HashMap<String, String>) -> Vec<Vec<String>> {
     let mut rows = Vec::new();
-    for key in ["master_host", "master_port", "master_link_status", "master_repl_offset", "slave_repl_offset"] {
+    for key in [
+        "master_host",
+        "master_port",
+        "master_link_status",
+        "master_repl_offset",
+        "slave_repl_offset",
+    ] {
         if let Some(value) = fields.get(key) {
             rows.push(vec![key.to_string(), value.clone()]);
         }
     }
 
     if let (Some(master_offset), Some(slave_offset)) = (
-        fields.get("master_repl_offset").and_then(|v| v.parse::<i64>().ok()),
-        fields.get("slave_repl_offset").and_then(|v| v.parse::<i64>().ok()),
+        fields
+            .get("master_repl_offset")
+            .and_then(|v| v.parse::<i64>().ok()),
+        fields
+            .get("slave_repl_offset")
+            .and_then(|v| v.parse::<i64>().ok()),
     ) {
-        rows.push(vec!["offset_lag".to_string(), (master_offset - slave_offset).abs().to_string()]);
+        rows.push(vec![
+            "offset_lag".to_string(),
+            (master_offset - slave_offset).abs().to_string(),
+        ]);
     }
     rows
 }
@@ -133,15 +159,25 @@ slave_repl_offset:14200
         assert_eq!(report.rows[0], vec!["role", "master"]);
         assert_eq!(report.rows[1], vec!["connected_slaves", "1"]);
         assert_eq!(report.rows[2], vec!["master_repl_offset", "14210"]);
-        assert_eq!(report.rows[3], vec!["slave0", "ip=127.0.0.1,port=6380,state=online,offset=14210,lag=0"]);
+        assert_eq!(
+            report.rows[3],
+            vec![
+                "slave0",
+                "ip=127.0.0.1,port=6380,state=online,offset=14210,lag=0"
+            ]
+        );
     }
 
     #[test]
     fn replica_report_computes_offset_lag() {
         let report = build_report(REPLICA_FIXTURE);
         assert_eq!(report.rows[0], vec!["role", "slave"]);
-        assert!(report.rows.contains(&vec!["master_link_status".to_string(), "up".to_string()]));
-        assert!(report.rows.contains(&vec!["offset_lag".to_string(), "10".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["master_link_status".to_string(), "up".to_string()]));
+        assert!(report
+            .rows
+            .contains(&vec!["offset_lag".to_string(), "10".to_string()]));
     }
 
     #[test]

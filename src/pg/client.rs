@@ -32,7 +32,11 @@ const DEFAULT_PORT: u16 = 5432;
 /// `insecure` swaps the webpki-roots certificate verifier for one that
 /// accepts any server certificate (self-signed/internal CAs the local trust
 /// store doesn't carry) -- TLS itself is still negotiated either way.
-pub async fn connect(profile: &PostgresProfile, timeout: Duration, insecure: bool) -> Result<Client> {
+pub async fn connect(
+    profile: &PostgresProfile,
+    timeout: Duration,
+    insecure: bool,
+) -> Result<Client> {
     let mut config = Config::new();
     config.host(profile.host.as_deref().unwrap_or(DEFAULT_HOST));
     config.port(profile.port.unwrap_or(DEFAULT_PORT));

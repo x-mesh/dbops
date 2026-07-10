@@ -15,7 +15,11 @@ use serde_json::Value;
 use crate::frame::result::StatReport;
 use crate::os::indices::human_bytes;
 
-pub async fn stats(client: &OpenSearch, timeout: Duration, index: Option<&str>) -> Result<StatReport> {
+pub async fn stats(
+    client: &OpenSearch,
+    timeout: Duration,
+    index: Option<&str>,
+) -> Result<StatReport> {
     let body = fetch(client, timeout, index).await?;
     Ok(build_report(&body))
 }
@@ -27,14 +31,20 @@ async fn fetch(client: &OpenSearch, timeout: Duration, index: Option<&str>) -> R
     };
     let indices_ns = client.indices();
     let fut = indices_ns.stats(parts).send();
-    let response = tokio::time::timeout(timeout, fut).await.context("_stats timed out")?.context("failed to query _stats")?;
+    let response = tokio::time::timeout(timeout, fut)
+        .await
+        .context("_stats timed out")?
+        .context("failed to query _stats")?;
 
     let status_code = response.status_code();
     if !status_code.is_success() {
         let body_text = response.text().await.unwrap_or_default();
         bail!("opensearch returned HTTP {status_code}: {body_text}");
     }
-    response.json().await.context("failed to parse _stats response")
+    response
+        .json()
+        .await
+        .context("failed to parse _stats response")
 }
 
 /// Pure: raw `_stats` JSON body -> a per-index [`StatReport`], sorted by
@@ -66,15 +76,27 @@ fn build_report(body: &Value) -> StatReport {
                 .and_then(Value::as_u64)
                 .map_or_else(|| "-".to_string(), |v| v.to_string());
 
-            rows.push(vec![name.clone(), docs_count, store_size, index_total, query_total]);
+            rows.push(vec![
+                name.clone(),
+                docs_count,
+                store_size,
+                index_total,
+                query_total,
+            ]);
         }
     }
 
     StatReport {
-        columns: vec!["index", "docs.count", "store.size", "indexing.index_total", "search.query_total"]
-            .into_iter()
-            .map(String::from)
-            .collect(),
+        columns: vec![
+            "index",
+            "docs.count",
+            "store.size",
+            "indexing.index_total",
+            "search.query_total",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect(),
         rows,
     }
 }
@@ -146,7 +168,16 @@ mod tests {
     fn missing_indices_object_yields_empty_report() {
         let report = build_report(&json!({}));
         assert!(report.rows.is_empty());
-        assert_eq!(report.columns, vec!["index", "docs.count", "store.size", "indexing.index_total", "search.query_total"]);
+        assert_eq!(
+            report.columns,
+            vec![
+                "index",
+                "docs.count",
+                "store.size",
+                "indexing.index_total",
+                "search.query_total"
+            ]
+        );
     }
 
     #[test]

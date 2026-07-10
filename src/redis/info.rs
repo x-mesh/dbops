@@ -51,7 +51,10 @@ evicted_keys:0
     fn parses_key_value_lines() {
         let map = parse_info(MEMORY_FIXTURE);
         assert_eq!(map.get("used_memory").map(String::as_str), Some("1048576"));
-        assert_eq!(map.get("mem_fragmentation_ratio").map(String::as_str), Some("1.05"));
+        assert_eq!(
+            map.get("mem_fragmentation_ratio").map(String::as_str),
+            Some("1.05")
+        );
         assert_eq!(map.get("evicted_keys").map(String::as_str), Some("0"));
     }
 

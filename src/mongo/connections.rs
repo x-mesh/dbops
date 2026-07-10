@@ -12,7 +12,8 @@ use crate::frame::{output, Ctx, ExitCode};
 use crate::mongo::client;
 
 pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
-    let mongo_client = match client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await {
+    let mongo_client = match client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await
+    {
         Ok(mongo_client) => mongo_client,
         Err(err) => {
             eprintln!("error: {err:#}");
@@ -30,7 +31,10 @@ pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
             Ok(ExitCode::from(unix::CONNECTION_FAILED))
         }
         Err(_elapsed) => {
-            eprintln!("error: mongodb connections query timed out after {:?}", ctx.timeout);
+            eprintln!(
+                "error: mongodb connections query timed out after {:?}",
+                ctx.timeout
+            );
             Ok(ExitCode::from(unix::CONNECTION_FAILED))
         }
     }
@@ -64,9 +68,12 @@ fn parse_connections(doc: &Document) -> Result<ConnectionStats> {
         .context("serverStatus response is missing a 'connections' section")?;
 
     Ok(ConnectionStats {
-        current: bson_i64(conns, "current").context("connections.current missing or not numeric")?,
-        available: bson_i64(conns, "available").context("connections.available missing or not numeric")?,
-        total_created: bson_i64(conns, "totalCreated").context("connections.totalCreated missing or not numeric")?,
+        current: bson_i64(conns, "current")
+            .context("connections.current missing or not numeric")?,
+        available: bson_i64(conns, "available")
+            .context("connections.available missing or not numeric")?,
+        total_created: bson_i64(conns, "totalCreated")
+            .context("connections.totalCreated missing or not numeric")?,
         active: bson_i64(conns, "active"),
     })
 }
@@ -92,7 +99,9 @@ fn build_report(stats: &ConnectionStats) -> StatReport {
             vec!["total_created".to_string(), stats.total_created.to_string()],
             vec![
                 "active".to_string(),
-                stats.active.map_or_else(|| "-".to_string(), |v| v.to_string()),
+                stats
+                    .active
+                    .map_or_else(|| "-".to_string(), |v| v.to_string()),
             ],
         ],
     }
@@ -119,7 +128,12 @@ mod tests {
         let stats = parse_connections(&mock_status_doc(Some(3))).unwrap();
         assert_eq!(
             stats,
-            ConnectionStats { current: 12, available: 838_848, total_created: 57, active: Some(3) }
+            ConnectionStats {
+                current: 12,
+                available: 838_848,
+                total_created: 57,
+                active: Some(3)
+            }
         );
     }
 
@@ -137,7 +151,12 @@ mod tests {
 
     #[test]
     fn build_report_renders_dash_for_missing_active() {
-        let stats = ConnectionStats { current: 1, available: 2, total_created: 3, active: None };
+        let stats = ConnectionStats {
+            current: 1,
+            available: 2,
+            total_created: 3,
+            active: None,
+        };
         let report = build_report(&stats);
         assert_eq!(report.columns, vec!["metric", "value"]);
         assert_eq!(report.rows[3], vec!["active", "-"]);
@@ -145,7 +164,12 @@ mod tests {
 
     #[test]
     fn build_report_renders_active_when_present() {
-        let stats = ConnectionStats { current: 1, available: 2, total_created: 3, active: Some(1) };
+        let stats = ConnectionStats {
+            current: 1,
+            available: 2,
+            total_created: 3,
+            active: Some(1),
+        };
         let report = build_report(&stats);
         assert_eq!(report.rows[3], vec!["active", "1"]);
     }

@@ -54,7 +54,11 @@ async fn check(ctx: &Ctx) -> Result<ExitCode> {
         reasons.join("; ")
     };
 
-    let result = CheckResult { status, summary, metrics };
+    let result = CheckResult {
+        status,
+        summary,
+        metrics,
+    };
     println!("{}", render_check("sys", "check", &result, ctx.json));
     Ok(ExitCode::from(exit::from_status(result.status)))
 }
@@ -119,8 +123,18 @@ fn collect_memory(status: &mut CheckStatus, reasons: &mut Vec<String>, metrics: 
 /// containers/VMs/bare metal — that normalization is left for v2.
 fn collect_load_average(metrics: &mut Vec<Metric>) {
     let load = System::load_average();
-    for (name, value) in [("load1", load.one), ("load5", load.five), ("load15", load.fifteen)] {
-        metrics.push(Metric { name: name.to_string(), value, unit: None, warn: None, crit: None });
+    for (name, value) in [
+        ("load1", load.one),
+        ("load5", load.five),
+        ("load15", load.fifteen),
+    ] {
+        metrics.push(Metric {
+            name: name.to_string(),
+            value,
+            unit: None,
+            warn: None,
+            crit: None,
+        });
     }
 }
 
@@ -157,7 +171,9 @@ async fn collect_docker(reasons: &mut Vec<String>, metrics: &mut Vec<Metric>) {
 /// only option, and it must not block a worker thread directly.
 async fn docker_container_counts() -> Option<(usize, usize)> {
     let output = tokio::task::spawn_blocking(|| {
-        std::process::Command::new("docker").args(["ps", "--format", "json"]).output()
+        std::process::Command::new("docker")
+            .args(["ps", "--format", "json"])
+            .output()
     })
     .await
     .ok()?
@@ -226,7 +242,13 @@ mod tests {
 
     #[test]
     fn escalate_never_downgrades() {
-        assert_eq!(escalate(CheckStatus::Critical, CheckStatus::Warning), CheckStatus::Critical);
-        assert_eq!(escalate(CheckStatus::Ok, CheckStatus::Warning), CheckStatus::Warning);
+        assert_eq!(
+            escalate(CheckStatus::Critical, CheckStatus::Warning),
+            CheckStatus::Critical
+        );
+        assert_eq!(
+            escalate(CheckStatus::Ok, CheckStatus::Warning),
+            CheckStatus::Warning
+        );
     }
 }

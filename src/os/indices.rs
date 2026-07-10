@@ -18,8 +18,15 @@ use serde_json::Value;
 
 use crate::frame::result::StatReport;
 
-const CAT_INDICES_FIELDS: &[&str] =
-    &["index", "health", "status", "docs.count", "pri.store.size", "store.size", "pri"];
+const CAT_INDICES_FIELDS: &[&str] = &[
+    "index",
+    "health",
+    "status",
+    "docs.count",
+    "pri.store.size",
+    "store.size",
+    "pri",
+];
 
 pub async fn indices(client: &OpenSearch, timeout: Duration, all: bool) -> Result<StatReport> {
     let entries = fetch(client, timeout).await?;
@@ -38,7 +45,10 @@ async fn fetch(client: &OpenSearch, timeout: Duration) -> Result<Vec<Value>> {
         .await
         .context("_cat/indices timed out")?
         .context("failed to query _cat/indices")?;
-    let body: Vec<Value> = response.json().await.context("failed to parse _cat/indices response")?;
+    let body: Vec<Value> = response
+        .json()
+        .await
+        .context("failed to parse _cat/indices response")?;
     Ok(body)
 }
 
@@ -53,7 +63,13 @@ fn build_report(entries: &[Value], all: bool) -> StatReport {
                 return None;
             }
 
-            let field = |key: &str| entry.get(key).and_then(Value::as_str).unwrap_or("-").to_string();
+            let field = |key: &str| {
+                entry
+                    .get(key)
+                    .and_then(Value::as_str)
+                    .unwrap_or("-")
+                    .to_string()
+            };
             let size_field = |key: &str| {
                 entry
                     .get(key)
@@ -77,10 +93,18 @@ fn build_report(entries: &[Value], all: bool) -> StatReport {
     rows.sort_by(|a, b| a[0].cmp(&b[0]));
 
     StatReport {
-        columns: vec!["index", "health", "status", "docs.count", "pri.store.size", "store.size", "pri"]
-            .into_iter()
-            .map(String::from)
-            .collect(),
+        columns: vec![
+            "index",
+            "health",
+            "status",
+            "docs.count",
+            "pri.store.size",
+            "store.size",
+            "pri",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect(),
         rows,
     }
 }
@@ -106,7 +130,14 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn entry(index: &str, health: &str, docs: &str, pri_size: &str, total_size: &str, pri: &str) -> Value {
+    fn entry(
+        index: &str,
+        health: &str,
+        docs: &str,
+        pri_size: &str,
+        total_size: &str,
+        pri: &str,
+    ) -> Value {
         json!({
             "index": index,
             "health": health,
@@ -171,7 +202,10 @@ mod tests {
     fn missing_fields_render_as_placeholder() {
         let entries = vec![json!({"index": "myindex"})];
         let report = build_report(&entries, false);
-        assert_eq!(report.rows[0], vec!["myindex", "-", "-", "-", "-", "-", "-"]);
+        assert_eq!(
+            report.rows[0],
+            vec!["myindex", "-", "-", "-", "-", "-", "-"]
+        );
     }
 
     #[test]
@@ -179,7 +213,15 @@ mod tests {
         let report = build_report(&[], false);
         assert_eq!(
             report.columns,
-            vec!["index", "health", "status", "docs.count", "pri.store.size", "store.size", "pri"]
+            vec![
+                "index",
+                "health",
+                "status",
+                "docs.count",
+                "pri.store.size",
+                "store.size",
+                "pri"
+            ]
         );
     }
 }

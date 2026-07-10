@@ -71,34 +71,52 @@ async fn fetch(pg_client: &Client) -> Result<StatReport> {
             .query_one(STANDBY_QUERY, &[])
             .await
             .context("pg_last_xact_replay_timestamp() query failed")?;
-        let last_replay: Option<String> = row.try_get(0).context("unexpected last-replay-timestamp row shape")?;
+        let last_replay: Option<String> = row
+            .try_get(0)
+            .context("unexpected last-replay-timestamp row shape")?;
         let lag_s: Option<f64> = row.try_get(1).context("unexpected replay-lag row shape")?;
         return Ok(build_standby_report(last_replay.as_deref(), lag_s));
     }
 
-    let rows = pg_client.query(PRIMARY_QUERY, &[]).await.context("pg_stat_replication query failed")?;
+    let rows = pg_client
+        .query(PRIMARY_QUERY, &[])
+        .await
+        .context("pg_stat_replication query failed")?;
     let mut replicas = Vec::with_capacity(rows.len());
     for row in &rows {
         replicas.push(ReplicaRow {
-            client_addr: row.try_get(0).context("unexpected pg_stat_replication row shape")?,
-            state: row.try_get(1).context("unexpected pg_stat_replication row shape")?,
-            lag_bytes: row.try_get(2).context("unexpected pg_stat_replication row shape")?,
-            replay_lag_s: row.try_get(3).context("unexpected pg_stat_replication row shape")?,
+            client_addr: row
+                .try_get(0)
+                .context("unexpected pg_stat_replication row shape")?,
+            state: row
+                .try_get(1)
+                .context("unexpected pg_stat_replication row shape")?,
+            lag_bytes: row
+                .try_get(2)
+                .context("unexpected pg_stat_replication row shape")?,
+            replay_lag_s: row
+                .try_get(3)
+                .context("unexpected pg_stat_replication row shape")?,
         });
     }
     Ok(build_primary_report(&replicas))
 }
 
 fn build_primary_report(replicas: &[ReplicaRow]) -> StatReport {
-    let columns = ["client_addr", "state", "lag_bytes", "replay_lag_s"].into_iter().map(String::from).collect();
+    let columns = ["client_addr", "state", "lag_bytes", "replay_lag_s"]
+        .into_iter()
+        .map(String::from)
+        .collect();
     let rows = replicas
         .iter()
         .map(|r| {
             vec![
                 r.client_addr.clone().unwrap_or_else(|| "-".to_string()),
                 r.state.clone(),
-                r.lag_bytes.map_or_else(|| "-".to_string(), |v| v.to_string()),
-                r.replay_lag_s.map_or_else(|| "-".to_string(), |v| format!("{v:.1}")),
+                r.lag_bytes
+                    .map_or_else(|| "-".to_string(), |v| v.to_string()),
+                r.replay_lag_s
+                    .map_or_else(|| "-".to_string(), |v| format!("{v:.1}")),
             ]
         })
         .collect();
@@ -110,8 +128,14 @@ fn build_standby_report(last_replay: Option<&str>, lag_s: Option<f64>) -> StatRe
         columns: vec!["field".to_string(), "value".to_string()],
         rows: vec![
             vec!["role".to_string(), "standby".to_string()],
-            vec!["last_replay_timestamp".to_string(), last_replay.unwrap_or("-").to_string()],
-            vec!["replay_lag_s".to_string(), lag_s.map_or_else(|| "-".to_string(), |v| format!("{v:.1}"))],
+            vec![
+                "last_replay_timestamp".to_string(),
+                last_replay.unwrap_or("-").to_string(),
+            ],
+            vec![
+                "replay_lag_s".to_string(),
+                lag_s.map_or_else(|| "-".to_string(), |v| format!("{v:.1}")),
+            ],
         ],
     }
 }
@@ -129,7 +153,10 @@ mod tests {
             replay_lag_s: Some(0.5),
         }];
         let report = build_primary_report(&replicas);
-        assert_eq!(report.columns, vec!["client_addr", "state", "lag_bytes", "replay_lag_s"]);
+        assert_eq!(
+            report.columns,
+            vec!["client_addr", "state", "lag_bytes", "replay_lag_s"]
+        );
         assert_eq!(report.rows[0], vec!["10.0.0.5", "streaming", "1024", "0.5"]);
     }
 
@@ -141,8 +168,12 @@ mod tests {
 
     #[test]
     fn missing_replica_fields_render_as_placeholder() {
-        let replicas =
-            vec![ReplicaRow { client_addr: None, state: "catchup".to_string(), lag_bytes: None, replay_lag_s: None }];
+        let replicas = vec![ReplicaRow {
+            client_addr: None,
+            state: "catchup".to_string(),
+            lag_bytes: None,
+            replay_lag_s: None,
+        }];
         let report = build_primary_report(&replicas);
         assert_eq!(report.rows[0], vec!["-", "catchup", "-", "-"]);
     }
@@ -151,7 +182,10 @@ mod tests {
     fn standby_report_shows_role_and_lag() {
         let report = build_standby_report(Some("2026-07-10 10:00:00+00"), Some(1.2));
         assert_eq!(report.rows[0], vec!["role", "standby"]);
-        assert_eq!(report.rows[1], vec!["last_replay_timestamp", "2026-07-10 10:00:00+00"]);
+        assert_eq!(
+            report.rows[1],
+            vec!["last_replay_timestamp", "2026-07-10 10:00:00+00"]
+        );
         assert_eq!(report.rows[2], vec!["replay_lag_s", "1.2"]);
     }
 

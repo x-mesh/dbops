@@ -19,7 +19,14 @@ use serde_json::Value;
 
 use crate::frame::result::StatReport;
 
-const CAT_SHARDS_FIELDS: &[&str] = &["index", "shard", "prirep", "state", "unassigned.reason", "node"];
+const CAT_SHARDS_FIELDS: &[&str] = &[
+    "index",
+    "shard",
+    "prirep",
+    "state",
+    "unassigned.reason",
+    "node",
+];
 
 pub struct ShardsReport {
     pub unassigned: StatReport,
@@ -33,12 +40,19 @@ pub async fn shards(client: &OpenSearch, timeout: Duration) -> Result<ShardsRepo
 
 async fn fetch(client: &OpenSearch, timeout: Duration) -> Result<Vec<Value>> {
     let cat = client.cat();
-    let fut = cat.shards(CatShardsParts::None).format("json").h(CAT_SHARDS_FIELDS).send();
+    let fut = cat
+        .shards(CatShardsParts::None)
+        .format("json")
+        .h(CAT_SHARDS_FIELDS)
+        .send();
     let response = tokio::time::timeout(timeout, fut)
         .await
         .context("_cat/shards timed out")?
         .context("failed to query _cat/shards")?;
-    let body: Vec<Value> = response.json().await.context("failed to parse _cat/shards response")?;
+    let body: Vec<Value> = response
+        .json()
+        .await
+        .context("failed to parse _cat/shards response")?;
     Ok(body)
 }
 
@@ -50,14 +64,30 @@ fn build_reports(entries: &[Value]) -> ShardsReport {
     let mut node_counts: BTreeMap<String, u64> = BTreeMap::new();
 
     for entry in entries {
-        let field = |key: &str| entry.get(key).and_then(Value::as_str).unwrap_or("-").to_string();
+        let field = |key: &str| {
+            entry
+                .get(key)
+                .and_then(Value::as_str)
+                .unwrap_or("-")
+                .to_string()
+        };
         let state = field("state");
 
         if state == "UNASSIGNED" {
-            unassigned_rows.push(vec![field("index"), field("shard"), field("prirep"), state, field("unassigned.reason")]);
+            unassigned_rows.push(vec![
+                field("index"),
+                field("shard"),
+                field("prirep"),
+                state,
+                field("unassigned.reason"),
+            ]);
         }
 
-        if let Some(node) = entry.get("node").and_then(Value::as_str).filter(|n| !n.is_empty()) {
+        if let Some(node) = entry
+            .get("node")
+            .and_then(Value::as_str)
+            .filter(|n| !n.is_empty())
+        {
             *node_counts.entry(node.to_string()).or_insert(0) += 1;
         }
     }
@@ -78,8 +108,14 @@ fn build_reports(entries: &[Value]) -> ShardsReport {
             rows: unassigned_rows,
         },
         distribution: StatReport {
-            columns: vec!["node", "shards"].into_iter().map(String::from).collect(),
-            rows: distribution.into_iter().map(|(node, count)| vec![node, count.to_string()]).collect(),
+            columns: vec!["node", "shards"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+            rows: distribution
+                .into_iter()
+                .map(|(node, count)| vec![node, count.to_string()])
+                .collect(),
         },
     }
 }
@@ -105,7 +141,10 @@ mod tests {
         ];
         let report = build_reports(&entries);
         assert_eq!(report.unassigned.rows.len(), 1);
-        assert_eq!(report.unassigned.rows[0], vec!["myindex", "0", "r", "UNASSIGNED", "REPLICA_ADDED"]);
+        assert_eq!(
+            report.unassigned.rows[0],
+            vec!["myindex", "0", "r", "UNASSIGNED", "REPLICA_ADDED"]
+        );
     }
 
     #[test]
@@ -123,12 +162,18 @@ mod tests {
             assigned("b", "0", "p", "node-2"),
         ];
         let report = build_reports(&entries);
-        assert_eq!(report.distribution.rows, vec![vec!["node-1", "2"], vec!["node-2", "1"]]);
+        assert_eq!(
+            report.distribution.rows,
+            vec![vec!["node-1", "2"], vec!["node-2", "1"]]
+        );
     }
 
     #[test]
     fn distribution_ignores_unassigned_shards() {
-        let entries = vec![assigned("a", "0", "p", "node-1"), unassigned("a", "1", "r", "NODE_LEFT")];
+        let entries = vec![
+            assigned("a", "0", "p", "node-1"),
+            unassigned("a", "1", "r", "NODE_LEFT"),
+        ];
         let report = build_reports(&entries);
         assert_eq!(report.distribution.rows, vec![vec!["node-1", "1"]]);
     }
@@ -141,12 +186,18 @@ mod tests {
             assigned("a", "2", "p", "node-a"),
         ];
         let report = build_reports(&entries);
-        assert_eq!(report.distribution.rows, vec![vec!["node-a", "2"], vec!["node-b", "1"]]);
+        assert_eq!(
+            report.distribution.rows,
+            vec![vec!["node-a", "2"], vec!["node-b", "1"]]
+        );
     }
 
     #[test]
     fn unassigned_rows_are_sorted() {
-        let entries = vec![unassigned("zzz", "0", "r", "x"), unassigned("aaa", "0", "r", "x")];
+        let entries = vec![
+            unassigned("zzz", "0", "r", "x"),
+            unassigned("aaa", "0", "r", "x"),
+        ];
         let report = build_reports(&entries);
         assert_eq!(report.unassigned.rows[0][0], "aaa");
         assert_eq!(report.unassigned.rows[1][0], "zzz");

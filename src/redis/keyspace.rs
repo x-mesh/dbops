@@ -17,7 +17,12 @@ pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
         }
     };
 
-    let raw = match connect::call::<String>(ctx, redis::cmd("INFO").arg("keyspace").query_async(&mut conn)).await {
+    let raw = match connect::call::<String>(
+        ctx,
+        redis::cmd("INFO").arg("keyspace").query_async(&mut conn),
+    )
+    .await
+    {
         Ok(raw) => raw,
         Err(err) => {
             eprintln!("error: {err:#}");
@@ -48,8 +53,14 @@ fn build_report(raw: &str) -> StatReport {
             let db_fields = info::parse_fields(&fields[&key]);
             vec![
                 key,
-                db_fields.get("keys").cloned().unwrap_or_else(|| "0".to_string()),
-                db_fields.get("expires").cloned().unwrap_or_else(|| "0".to_string()),
+                db_fields
+                    .get("keys")
+                    .cloned()
+                    .unwrap_or_else(|| "0".to_string()),
+                db_fields
+                    .get("expires")
+                    .cloned()
+                    .unwrap_or_else(|| "0".to_string()),
             ]
         })
         .collect();
@@ -81,11 +92,14 @@ db2:keys=7,expires=2,avg_ttl=120,subexpiry=0
     fn builds_one_row_per_db_sorted_numerically() {
         let report = build_report(FIXTURE);
         assert_eq!(report.columns, vec!["db", "keys", "expires"]);
-        assert_eq!(report.rows, vec![
-            vec!["db0", "5", "1"],
-            vec!["db2", "7", "2"],
-            vec!["db10", "100", "0"],
-        ]);
+        assert_eq!(
+            report.rows,
+            vec![
+                vec!["db0", "5", "1"],
+                vec!["db2", "7", "2"],
+                vec!["db10", "100", "0"],
+            ]
+        );
     }
 
     #[test]

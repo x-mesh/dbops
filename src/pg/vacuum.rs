@@ -47,7 +47,10 @@ pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
         }
     };
 
-    println!("{}", output::render_stat(&build_report(&rows, freeze_max_age), ctx.json));
+    println!(
+        "{}",
+        output::render_stat(&build_report(&rows, freeze_max_age), ctx.json)
+    );
     Ok(ExitCode::from(unix::SUCCESS))
 }
 
@@ -60,15 +63,28 @@ struct VacuumRow {
 }
 
 async fn fetch(pg_client: &Client) -> Result<(Vec<VacuumRow>, i64)> {
-    let rows = pg_client.query(QUERY, &[&DEFAULT_TOP]).await.context("wraparound-age query failed")?;
+    let rows = pg_client
+        .query(QUERY, &[&DEFAULT_TOP])
+        .await
+        .context("wraparound-age query failed")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in &rows {
         out.push(VacuumRow {
-            schema: row.try_get(0).context("unexpected wraparound-age row shape")?,
-            table: row.try_get(1).context("unexpected wraparound-age row shape")?,
-            last_vacuum: row.try_get(2).context("unexpected wraparound-age row shape")?,
-            last_autovacuum: row.try_get(3).context("unexpected wraparound-age row shape")?,
-            xid_age: row.try_get(4).context("unexpected wraparound-age row shape")?,
+            schema: row
+                .try_get(0)
+                .context("unexpected wraparound-age row shape")?,
+            table: row
+                .try_get(1)
+                .context("unexpected wraparound-age row shape")?,
+            last_vacuum: row
+                .try_get(2)
+                .context("unexpected wraparound-age row shape")?,
+            last_autovacuum: row
+                .try_get(3)
+                .context("unexpected wraparound-age row shape")?,
+            xid_age: row
+                .try_get(4)
+                .context("unexpected wraparound-age row shape")?,
         });
     }
 
@@ -78,8 +94,10 @@ async fn fetch(pg_client: &Client) -> Result<(Vec<VacuumRow>, i64)> {
         .context("SHOW autovacuum_freeze_max_age failed")?
         .try_get(0)
         .context("unexpected autovacuum_freeze_max_age row shape")?;
-    let freeze_max_age: i64 =
-        freeze_max_age_raw.trim().parse().context("failed to parse autovacuum_freeze_max_age")?;
+    let freeze_max_age: i64 = freeze_max_age_raw
+        .trim()
+        .parse()
+        .context("failed to parse autovacuum_freeze_max_age")?;
 
     Ok((out, freeze_max_age))
 }
@@ -88,10 +106,16 @@ async fn fetch(pg_client: &Client) -> Result<(Vec<VacuumRow>, i64)> {
 /// `freeze_pct` is `-` when the GUC itself is unreadable (0), matching the
 /// same "don't fabricate a ratio against nothing" rule used elsewhere.
 fn build_report(rows: &[VacuumRow], freeze_max_age: i64) -> StatReport {
-    let columns = ["table", "last_vacuum", "last_autovacuum", "xid_age", "freeze_pct"]
-        .into_iter()
-        .map(String::from)
-        .collect();
+    let columns = [
+        "table",
+        "last_vacuum",
+        "last_autovacuum",
+        "xid_age",
+        "freeze_pct",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect();
 
     let out_rows = rows
         .iter()
@@ -111,14 +135,23 @@ fn build_report(rows: &[VacuumRow], freeze_max_age: i64) -> StatReport {
         })
         .collect();
 
-    StatReport { columns, rows: out_rows }
+    StatReport {
+        columns,
+        rows: out_rows,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn row(schema: &str, table: &str, last_vacuum: Option<&str>, last_autovacuum: Option<&str>, xid_age: i32) -> VacuumRow {
+    fn row(
+        schema: &str,
+        table: &str,
+        last_vacuum: Option<&str>,
+        last_autovacuum: Option<&str>,
+        xid_age: i32,
+    ) -> VacuumRow {
         VacuumRow {
             schema: schema.to_string(),
             table: table.to_string(),
@@ -130,21 +163,51 @@ mod tests {
 
     #[test]
     fn combines_schema_and_table_name() {
-        let report = build_report(&[row("public", "events", Some("2026-07-01 00:00:00+00"), None, 100_000_000)], 200_000_000);
-        assert_eq!(report.columns, vec!["table", "last_vacuum", "last_autovacuum", "xid_age", "freeze_pct"]);
+        let report = build_report(
+            &[row(
+                "public",
+                "events",
+                Some("2026-07-01 00:00:00+00"),
+                None,
+                100_000_000,
+            )],
+            200_000_000,
+        );
+        assert_eq!(
+            report.columns,
+            vec![
+                "table",
+                "last_vacuum",
+                "last_autovacuum",
+                "xid_age",
+                "freeze_pct"
+            ]
+        );
         assert_eq!(report.rows[0][0], "public.events");
     }
 
     #[test]
     fn missing_timestamps_render_as_placeholder() {
-        let report = build_report(&[row("public", "events", Some("2026-07-01 00:00:00+00"), None, 100_000_000)], 200_000_000);
+        let report = build_report(
+            &[row(
+                "public",
+                "events",
+                Some("2026-07-01 00:00:00+00"),
+                None,
+                100_000_000,
+            )],
+            200_000_000,
+        );
         assert_eq!(report.rows[0][1], "2026-07-01 00:00:00+00");
         assert_eq!(report.rows[0][2], "-");
     }
 
     #[test]
     fn computes_freeze_pct() {
-        let report = build_report(&[row("public", "events", None, None, 100_000_000)], 200_000_000);
+        let report = build_report(
+            &[row("public", "events", None, None, 100_000_000)],
+            200_000_000,
+        );
         assert_eq!(report.rows[0][3], "100000000");
         assert_eq!(report.rows[0][4], "50.0%");
     }

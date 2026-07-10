@@ -50,16 +50,30 @@ pub enum TcpCommand {
 
 pub async fn run_http(args: &HttpArgs, ctx: &Ctx) -> Result<ExitCode> {
     match &args.command {
-        HttpCommand::Check { url, expect_status, warning, critical } => {
-            http::check(ctx, url, *expect_status, warning.as_deref(), critical.as_deref()).await
+        HttpCommand::Check {
+            url,
+            expect_status,
+            warning,
+            critical,
+        } => {
+            http::check(
+                ctx,
+                url,
+                *expect_status,
+                warning.as_deref(),
+                critical.as_deref(),
+            )
+            .await
         }
     }
 }
 
 pub async fn run_tcp(args: &TcpArgs, ctx: &Ctx) -> Result<ExitCode> {
     match &args.command {
-        TcpCommand::Check { address, warning, critical } => {
-            tcp::check(ctx, address, warning.as_deref(), critical.as_deref()).await
-        }
+        TcpCommand::Check {
+            address,
+            warning,
+            critical,
+        } => tcp::check(ctx, address, warning.as_deref(), critical.as_deref()).await,
     }
 }

@@ -16,8 +16,14 @@ pub async fn check(
     warning: Option<&str>,
     critical: Option<&str>,
 ) -> Result<ExitCode> {
-    let warning_dur = warning.map(parse_timeout).transpose().context("--warning")?;
-    let critical_dur = critical.map(parse_timeout).transpose().context("--critical")?;
+    let warning_dur = warning
+        .map(parse_timeout)
+        .transpose()
+        .context("--warning")?;
+    let critical_dur = critical
+        .map(parse_timeout)
+        .transpose()
+        .context("--critical")?;
 
     let started = Instant::now();
     let connect_result = tokio::time::timeout(ctx.timeout, TcpStream::connect(address)).await;
@@ -55,7 +61,11 @@ pub async fn check(
             let summary = if reasons.is_empty() {
                 format!("connected to {address} in {}ms", elapsed.as_millis())
             } else {
-                format!("connected to {address} in {}ms; {}", elapsed.as_millis(), reasons.join(", "))
+                format!(
+                    "connected to {address} in {}ms; {}",
+                    elapsed.as_millis(),
+                    reasons.join(", ")
+                )
             };
 
             CheckResult {
@@ -111,7 +121,13 @@ mod tests {
 
     #[test]
     fn escalate_never_downgrades() {
-        assert_eq!(escalate(CheckStatus::Critical, CheckStatus::Warning), CheckStatus::Critical);
-        assert_eq!(escalate(CheckStatus::Ok, CheckStatus::Warning), CheckStatus::Warning);
+        assert_eq!(
+            escalate(CheckStatus::Critical, CheckStatus::Warning),
+            CheckStatus::Critical
+        );
+        assert_eq!(
+            escalate(CheckStatus::Ok, CheckStatus::Warning),
+            CheckStatus::Warning
+        );
     }
 }

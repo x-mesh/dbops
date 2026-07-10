@@ -18,7 +18,8 @@ use crate::mongo::client;
 const OPLOG_COLLECTION: &str = "oplog.rs";
 
 pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
-    let mongo_client = match client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await {
+    let mongo_client = match client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await
+    {
         Ok(mongo_client) => mongo_client,
         Err(err) => {
             eprintln!("error: {err:#}");
@@ -36,7 +37,10 @@ pub async fn run(ctx: &Ctx) -> Result<ExitCode> {
             Ok(ExitCode::from(unix::CONNECTION_FAILED))
         }
         Err(_elapsed) => {
-            eprintln!("error: mongodb oplog query timed out after {:?}", ctx.timeout);
+            eprintln!(
+                "error: mongodb oplog query timed out after {:?}",
+                ctx.timeout
+            );
             Ok(ExitCode::from(unix::CONNECTION_FAILED))
         }
     }
@@ -101,8 +105,12 @@ fn parse_oplog_usage(doc: &Document) -> Result<OplogUsage> {
 /// in seconds. Kept free of any `mongodb::Client` dependency so it can be
 /// unit-tested against mock documents.
 fn parse_window_secs(oldest: &Document, newest: &Document) -> Result<u64> {
-    let oldest_ts = oldest.get_timestamp("ts").context("oplog entry is missing 'ts'")?;
-    let newest_ts = newest.get_timestamp("ts").context("oplog entry is missing 'ts'")?;
+    let oldest_ts = oldest
+        .get_timestamp("ts")
+        .context("oplog entry is missing 'ts'")?;
+    let newest_ts = newest
+        .get_timestamp("ts")
+        .context("oplog entry is missing 'ts'")?;
     Ok(newest_ts.time.saturating_sub(oldest_ts.time) as u64)
 }
 
@@ -152,7 +160,10 @@ fn build_report(window_secs: u64, usage: &OplogUsage) -> StatReport {
             vec!["window".to_string(), format_duration(window_secs)],
             vec!["window_seconds".to_string(), window_secs.to_string()],
             vec!["size_bytes".to_string(), value_or_dash(usage.size)],
-            vec!["storage_size_bytes".to_string(), value_or_dash(usage.storage_size)],
+            vec![
+                "storage_size_bytes".to_string(),
+                value_or_dash(usage.storage_size),
+            ],
             vec!["max_size_bytes".to_string(), value_or_dash(usage.max_size)],
             vec!["count".to_string(), value_or_dash(usage.count)],
         ],
@@ -164,7 +175,10 @@ fn standalone_report() -> StatReport {
         columns: vec!["metric".to_string(), "value".to_string()],
         rows: vec![
             vec!["status".to_string(), "standalone".to_string()],
-            vec!["note".to_string(), "not a replica set (no oplog found)".to_string()],
+            vec![
+                "note".to_string(),
+                "not a replica set (no oplog found)".to_string(),
+            ],
         ],
     }
 }
@@ -198,7 +212,12 @@ mod tests {
         let usage = parse_oplog_usage(&doc).unwrap();
         assert_eq!(
             usage,
-            OplogUsage { size: Some(1_048_576), storage_size: Some(2_097_152), max_size: Some(10_485_760), count: Some(42) }
+            OplogUsage {
+                size: Some(1_048_576),
+                storage_size: Some(2_097_152),
+                max_size: Some(10_485_760),
+                count: Some(42)
+            }
         );
     }
 

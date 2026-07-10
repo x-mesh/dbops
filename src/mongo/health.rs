@@ -27,11 +27,20 @@ const NO_REPLICA_SET_CONFIG: i32 = 76;
 
 pub async fn run(ctx: &Ctx, args: &HealthArgs) -> Result<ExitCode> {
     let warning = args.warning.as_deref().map(parse_lag_seconds).transpose()?;
-    let critical = args.critical.as_deref().map(parse_lag_seconds).transpose()?;
+    let critical = args
+        .critical
+        .as_deref()
+        .map(parse_lag_seconds)
+        .transpose()?;
 
     let result = check(ctx, warning, critical).await;
-    println!("{}", crate::frame::output::render_check("mongo", "health", &result, ctx.json));
-    Ok(ExitCode::from(crate::frame::exit::from_status(result.status)))
+    println!(
+        "{}",
+        crate::frame::output::render_check("mongo", "health", &result, ctx.json)
+    );
+    Ok(ExitCode::from(crate::frame::exit::from_status(
+        result.status,
+    )))
 }
 
 enum ReplStatusOutcome {
@@ -45,22 +54,31 @@ enum ReplStatusOutcome {
 /// UNKNOWN result, not a process-level error.
 async fn check(ctx: &Ctx, warning: Option<i64>, critical: Option<i64>) -> CheckResult {
     match tokio::time::timeout(ctx.timeout, probe(ctx)).await {
-        Err(_elapsed) => unknown(format!("mongodb health check did not complete within {:?}", ctx.timeout)),
+        Err(_elapsed) => unknown(format!(
+            "mongodb health check did not complete within {:?}",
+            ctx.timeout
+        )),
         Ok(Err(err)) => unknown(format!("mongodb health check failed: {err:#}")),
         Ok(Ok(ReplStatusOutcome::Standalone)) => CheckResult {
             status: CheckStatus::Ok,
             summary: "standalone (no replica set)".to_string(),
             metrics: vec![],
         },
-        Ok(Ok(ReplStatusOutcome::ReplicaSet(doc))) => build_replicaset_result(&doc, warning, critical),
+        Ok(Ok(ReplStatusOutcome::ReplicaSet(doc))) => {
+            build_replicaset_result(&doc, warning, critical)
+        }
     }
 }
 
 async fn probe(ctx: &Ctx) -> Result<ReplStatusOutcome> {
-    let mongo_client: Client = client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await?;
+    let mongo_client: Client =
+        client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await?;
     let admin = mongo_client.database("admin");
 
-    admin.run_command(doc! { "ping": 1 }).await.context("ping failed")?;
+    admin
+        .run_command(doc! { "ping": 1 })
+        .await
+        .context("ping failed")?;
 
     match admin.run_command(doc! { "replSetGetStatus": 1 }).await {
         Ok(status_doc) => Ok(ReplStatusOutcome::ReplicaSet(status_doc)),
@@ -76,10 +94,18 @@ fn is_not_replica_set_error(err: &mongodb::error::Error) -> bool {
     )
 }
 
-fn build_replicaset_result(doc: &Document, warning: Option<i64>, critical: Option<i64>) -> CheckResult {
+fn build_replicaset_result(
+    doc: &Document,
+    warning: Option<i64>,
+    critical: Option<i64>,
+) -> CheckResult {
     let members = match replset_status::parse_members(doc) {
         Ok(members) => members,
-        Err(err) => return unknown(format!("failed to parse replSetGetStatus response: {err:#}")),
+        Err(err) => {
+            return unknown(format!(
+                "failed to parse replSetGetStatus response: {err:#}"
+            ))
+        }
     };
 
     let judgement = replset_status::judge_replset(&members, warning, critical);
@@ -102,20 +128,30 @@ fn build_replicaset_result(doc: &Document, warning: Option<i64>, critical: Optio
         crit: None,
     });
 
-    CheckResult { status: judgement.status, summary: judgement.summary, metrics }
+    CheckResult {
+        status: judgement.status,
+        summary: judgement.summary,
+        metrics,
+    }
 }
 
 fn unknown(summary: String) -> CheckResult {
-    CheckResult { status: CheckStatus::Unknown, summary, metrics: vec![] }
+    CheckResult {
+        status: CheckStatus::Unknown,
+        summary,
+        metrics: vec![],
+    }
 }
 
 /// Parse a `--warning`/`--critical` lag threshold: a bare integer or an
 /// integer with a trailing `s`, both meaning seconds (e.g. `10`, `10s`).
 fn parse_lag_seconds(raw: &str) -> Result<i64> {
     let trimmed = raw.trim().trim_end_matches('s');
-    trimmed
-        .parse::<i64>()
-        .with_context(|| format!("invalid lag threshold {raw:?}: expected an integer number of seconds (e.g. 10 or 10s)"))
+    trimmed.parse::<i64>().with_context(|| {
+        format!(
+            "invalid lag threshold {raw:?}: expected an integer number of seconds (e.g. 10 or 10s)"
+        )
+    })
 }
 
 #[cfg(test)]

@@ -46,17 +46,18 @@ pub async fn run(ctx: &Ctx, long_running: bool, threshold: Option<&str>) -> Resu
         }
     };
 
-    let rows = match tokio::time::timeout(ctx.timeout, fetch(&pg_client, long_running, threshold)).await {
-        Ok(Ok(rows)) => rows,
-        Ok(Err(err)) => {
-            eprintln!("error: {err:#}");
-            return Ok(ExitCode::from(unix::CONNECTION_FAILED));
-        }
-        Err(_) => {
-            eprintln!("error: query timed out after {:?}", ctx.timeout);
-            return Ok(ExitCode::from(unix::CONNECTION_FAILED));
-        }
-    };
+    let rows =
+        match tokio::time::timeout(ctx.timeout, fetch(&pg_client, long_running, threshold)).await {
+            Ok(Ok(rows)) => rows,
+            Ok(Err(err)) => {
+                eprintln!("error: {err:#}");
+                return Ok(ExitCode::from(unix::CONNECTION_FAILED));
+            }
+            Err(_) => {
+                eprintln!("error: query timed out after {:?}", ctx.timeout);
+                return Ok(ExitCode::from(unix::CONNECTION_FAILED));
+            }
+        };
 
     println!("{}", output::render_stat(&build_report(&rows), ctx.json));
     Ok(ExitCode::from(unix::SUCCESS))
@@ -70,7 +71,11 @@ struct QueryRow {
     query: String,
 }
 
-async fn fetch(pg_client: &Client, long_running: bool, threshold: Duration) -> Result<Vec<QueryRow>> {
+async fn fetch(
+    pg_client: &Client,
+    long_running: bool,
+    threshold: Duration,
+) -> Result<Vec<QueryRow>> {
     let rows = if long_running {
         let threshold_secs = threshold.as_secs_f64();
         pg_client
@@ -78,24 +83,40 @@ async fn fetch(pg_client: &Client, long_running: bool, threshold: Duration) -> R
             .await
             .context("pg_stat_activity long-running query failed")?
     } else {
-        pg_client.query(QUERY_ALL_ACTIVE, &[]).await.context("pg_stat_activity query failed")?
+        pg_client
+            .query(QUERY_ALL_ACTIVE, &[])
+            .await
+            .context("pg_stat_activity query failed")?
     };
 
     let mut out = Vec::with_capacity(rows.len());
     for row in &rows {
         out.push(QueryRow {
-            pid: row.try_get(0).context("unexpected pg_stat_activity row shape")?,
-            user: row.try_get(1).context("unexpected pg_stat_activity row shape")?,
-            db: row.try_get(2).context("unexpected pg_stat_activity row shape")?,
-            duration_s: row.try_get(3).context("unexpected pg_stat_activity row shape")?,
-            query: row.try_get(4).context("unexpected pg_stat_activity row shape")?,
+            pid: row
+                .try_get(0)
+                .context("unexpected pg_stat_activity row shape")?,
+            user: row
+                .try_get(1)
+                .context("unexpected pg_stat_activity row shape")?,
+            db: row
+                .try_get(2)
+                .context("unexpected pg_stat_activity row shape")?,
+            duration_s: row
+                .try_get(3)
+                .context("unexpected pg_stat_activity row shape")?,
+            query: row
+                .try_get(4)
+                .context("unexpected pg_stat_activity row shape")?,
         });
     }
     Ok(out)
 }
 
 fn build_report(rows: &[QueryRow]) -> StatReport {
-    let columns = ["pid", "user", "db", "duration", "query"].into_iter().map(String::from).collect();
+    let columns = ["pid", "user", "db", "duration", "query"]
+        .into_iter()
+        .map(String::from)
+        .collect();
     let out_rows = rows
         .iter()
         .map(|r| {
@@ -108,7 +129,10 @@ fn build_report(rows: &[QueryRow]) -> StatReport {
             ]
         })
         .collect();
-    StatReport { columns, rows: out_rows }
+    StatReport {
+        columns,
+        rows: out_rows,
+    }
 }
 
 /// Char-boundary-safe truncation to [`MAX_QUERY_CHARS`]; control-character
@@ -139,8 +163,14 @@ mod tests {
     #[test]
     fn formats_duration_and_identity() {
         let report = build_report(&[row(123, 90.25, "SELECT 1")]);
-        assert_eq!(report.columns, vec!["pid", "user", "db", "duration", "query"]);
-        assert_eq!(report.rows[0], vec!["123", "app", "appdb", "90.2s", "SELECT 1"]);
+        assert_eq!(
+            report.columns,
+            vec!["pid", "user", "db", "duration", "query"]
+        );
+        assert_eq!(
+            report.rows[0],
+            vec!["123", "app", "appdb", "90.2s", "SELECT 1"]
+        );
     }
 
     #[test]

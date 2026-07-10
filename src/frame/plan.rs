@@ -40,7 +40,9 @@ impl ActionKind {
         match self {
             ActionKind::Create | ActionKind::Insert => "+",
             ActionKind::Drop | ActionKind::Delete | ActionKind::Truncate => "-",
-            ActionKind::Update | ActionKind::Grant | ActionKind::Index | ActionKind::Other(_) => "~",
+            ActionKind::Update | ActionKind::Grant | ActionKind::Index | ActionKind::Other(_) => {
+                "~"
+            }
         }
     }
 
@@ -95,7 +97,8 @@ impl PlanPreview {
     /// shows a user always goes through here, never a one-off `println!`.
     pub fn render(&self, json: bool) -> String {
         if json {
-            return serde_json::to_string_pretty(self).expect("PlanPreview contains only JSON-safe types");
+            return serde_json::to_string_pretty(self)
+                .expect("PlanPreview contains only JSON-safe types");
         }
         self.render_text()
     }
@@ -109,12 +112,20 @@ impl PlanPreview {
             .actions
             .iter()
             .map(|action| {
-                let mut line = format!("  {} {:<8} {}", action.kind.symbol(), action.kind.label(), action.target);
+                let mut line = format!(
+                    "  {} {:<8} {}",
+                    action.kind.symbol(),
+                    action.kind.label(),
+                    action.target
+                );
                 if !action.detail.is_empty() {
                     line.push_str(&format!("  ({})", action.detail));
                 }
                 if let Some(n) = action.estimated_records {
-                    line.push_str(&format!(" \u{2014} ~{n} record{}", if n == 1 { "" } else { "s" }));
+                    line.push_str(&format!(
+                        " \u{2014} ~{n} record{}",
+                        if n == 1 { "" } else { "s" }
+                    ));
                 }
                 line
             })
@@ -154,7 +165,10 @@ mod tests {
     #[test]
     fn confirm_target_is_some_when_every_action_shares_a_target() {
         let plan = PlanPreview {
-            actions: vec![action(ActionKind::Drop, "orders"), action(ActionKind::Truncate, "orders")],
+            actions: vec![
+                action(ActionKind::Drop, "orders"),
+                action(ActionKind::Truncate, "orders"),
+            ],
         };
         assert_eq!(plan.confirm_target(), Some("orders"));
     }
@@ -162,7 +176,10 @@ mod tests {
     #[test]
     fn confirm_target_is_none_when_targets_diverge() {
         let plan = PlanPreview {
-            actions: vec![action(ActionKind::Drop, "orders"), action(ActionKind::Drop, "sessions")],
+            actions: vec![
+                action(ActionKind::Drop, "orders"),
+                action(ActionKind::Drop, "sessions"),
+            ],
         };
         assert_eq!(plan.confirm_target(), None);
     }
@@ -189,7 +206,10 @@ mod tests {
     #[test]
     fn text_render_uses_terraform_style_symbols_and_summary() {
         let plan = PlanPreview {
-            actions: vec![action(ActionKind::Create, "index-a"), action(ActionKind::Drop, "index-b")],
+            actions: vec![
+                action(ActionKind::Create, "index-a"),
+                action(ActionKind::Drop, "index-b"),
+            ],
         };
         let out = plan.render(false);
         assert!(out.contains("+ create"));

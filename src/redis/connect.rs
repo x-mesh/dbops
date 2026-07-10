@@ -19,12 +19,9 @@ use crate::frame::Ctx;
 /// onto their own exit-code contract (`health` -> Unknown/exit 3, stat
 /// commands -> stderr/exit 4).
 pub async fn connect(ctx: &Ctx) -> Result<MultiplexedConnection> {
-    let uri = ctx
-        .profile
-        .redis
-        .uri
-        .as_ref()
-        .ok_or_else(|| anyhow!("redis URI not configured (set DBOPS_REDIS_URI or a config profile)"))?;
+    let uri = ctx.profile.redis.uri.as_ref().ok_or_else(|| {
+        anyhow!("redis URI not configured (set DBOPS_REDIS_URI or a config profile)")
+    })?;
 
     let mut info = uri.expose().into_connection_info()?;
     if ctx.insecure {
@@ -42,7 +39,10 @@ pub async fn connect(ctx: &Ctx) -> Result<MultiplexedConnection> {
 
 /// Run a single redis command future under `ctx.timeout`, mapping both a
 /// timeout and a protocol/IO error onto `anyhow::Error` uniformly.
-pub async fn call<T>(ctx: &Ctx, fut: impl std::future::Future<Output = redis::RedisResult<T>>) -> Result<T> {
+pub async fn call<T>(
+    ctx: &Ctx,
+    fut: impl std::future::Future<Output = redis::RedisResult<T>>,
+) -> Result<T> {
     tokio::time::timeout(ctx.timeout, fut)
         .await
         .map_err(|_| anyhow!("redis command timed out after {:?}", ctx.timeout))?

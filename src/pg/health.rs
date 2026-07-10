@@ -108,7 +108,11 @@ fn parse_threshold(raw: Option<&str>) -> Result<Option<Duration>> {
 /// that hasn't replayed anything yet) means there's nothing to compare
 /// against a threshold -- that's `Ok`, not "threshold trivially satisfied"
 /// or "unknown".
-fn evaluate_status(lag_seconds: Option<f64>, warning: Option<Duration>, critical: Option<Duration>) -> CheckStatus {
+fn evaluate_status(
+    lag_seconds: Option<f64>,
+    warning: Option<Duration>,
+    critical: Option<Duration>,
+) -> CheckStatus {
     let Some(lag) = lag_seconds else {
         return CheckStatus::Ok;
     };
@@ -143,7 +147,8 @@ async fn primary_lag_seconds(pg_client: &Client) -> Result<Option<f64>> {
         )
         .await
         .context("pg_stat_replication query failed")?;
-    row.try_get(0).context("unexpected pg_stat_replication row shape")
+    row.try_get(0)
+        .context("unexpected pg_stat_replication row shape")
 }
 
 /// Standby-side view: how far behind the last replayed transaction is from
@@ -156,7 +161,8 @@ async fn standby_lag_seconds(pg_client: &Client) -> Result<Option<f64>> {
         )
         .await
         .context("pg_last_xact_replay_timestamp() query failed")?;
-    row.try_get(0).context("unexpected pg_last_xact_replay_timestamp() row shape")
+    row.try_get(0)
+        .context("unexpected pg_last_xact_replay_timestamp() row shape")
 }
 
 /// Informational only -- never fails the health check. A role without
@@ -188,7 +194,10 @@ async fn warn_if_unsupported_version(pg_client: &Client) {
     let Ok(version) = row.try_get::<_, String>(0) else {
         return;
     };
-    let major = version.split(|c: char| !c.is_ascii_digit()).next().and_then(|s| s.parse::<u32>().ok());
+    let major = version
+        .split(|c: char| !c.is_ascii_digit())
+        .next()
+        .and_then(|s| s.parse::<u32>().ok());
     if major.is_some_and(|m| m < MIN_SUPPORTED_MAJOR_VERSION) {
         eprintln!("warning: postgres server_version {version} is older than {MIN_SUPPORTED_MAJOR_VERSION} (unsupported)");
     }
@@ -201,7 +210,11 @@ mod tests {
     #[test]
     fn no_lag_metric_is_always_ok() {
         assert_eq!(
-            evaluate_status(None, Some(Duration::from_millis(1)), Some(Duration::from_millis(1))),
+            evaluate_status(
+                None,
+                Some(Duration::from_millis(1)),
+                Some(Duration::from_millis(1))
+            ),
             CheckStatus::Ok
         );
     }
@@ -209,7 +222,11 @@ mod tests {
     #[test]
     fn lag_below_every_threshold_is_ok() {
         assert_eq!(
-            evaluate_status(Some(0.1), Some(Duration::from_secs(5)), Some(Duration::from_secs(30))),
+            evaluate_status(
+                Some(0.1),
+                Some(Duration::from_secs(5)),
+                Some(Duration::from_secs(30))
+            ),
             CheckStatus::Ok
         );
     }
@@ -217,7 +234,11 @@ mod tests {
     #[test]
     fn lag_at_or_above_warning_is_warning() {
         assert_eq!(
-            evaluate_status(Some(5.0), Some(Duration::from_secs(5)), Some(Duration::from_secs(30))),
+            evaluate_status(
+                Some(5.0),
+                Some(Duration::from_secs(5)),
+                Some(Duration::from_secs(30))
+            ),
             CheckStatus::Warning
         );
     }
@@ -225,14 +246,25 @@ mod tests {
     #[test]
     fn lag_at_or_above_critical_is_critical_even_under_warning() {
         assert_eq!(
-            evaluate_status(Some(31.0), Some(Duration::from_secs(5)), Some(Duration::from_secs(30))),
+            evaluate_status(
+                Some(31.0),
+                Some(Duration::from_secs(5)),
+                Some(Duration::from_secs(30))
+            ),
             CheckStatus::Critical
         );
     }
 
     #[test]
     fn critical_takes_priority_when_both_thresholds_are_crossed() {
-        assert_eq!(evaluate_status(Some(100.0), Some(Duration::from_secs(5)), Some(Duration::from_secs(30))), CheckStatus::Critical);
+        assert_eq!(
+            evaluate_status(
+                Some(100.0),
+                Some(Duration::from_secs(5)),
+                Some(Duration::from_secs(30))
+            ),
+            CheckStatus::Critical
+        );
     }
 
     #[test]
@@ -252,22 +284,34 @@ mod tests {
 
     #[test]
     fn summary_primary_with_lag() {
-        assert_eq!(build_summary(Role::Primary, Some(0.3)), "primary, replica lag 0.3s");
+        assert_eq!(
+            build_summary(Role::Primary, Some(0.3)),
+            "primary, replica lag 0.3s"
+        );
     }
 
     #[test]
     fn summary_primary_without_replicas() {
-        assert_eq!(build_summary(Role::Primary, None), "primary, no replicas connected");
+        assert_eq!(
+            build_summary(Role::Primary, None),
+            "primary, no replicas connected"
+        );
     }
 
     #[test]
     fn summary_standby_with_lag() {
-        assert_eq!(build_summary(Role::Standby, Some(1.25)), "standby, replay lag 1.2s");
+        assert_eq!(
+            build_summary(Role::Standby, Some(1.25)),
+            "standby, replay lag 1.2s"
+        );
     }
 
     #[test]
     fn summary_standby_unknown_lag() {
-        assert_eq!(build_summary(Role::Standby, None), "standby, replay lag unknown");
+        assert_eq!(
+            build_summary(Role::Standby, None),
+            "standby, replay lag unknown"
+        );
     }
 
     #[test]

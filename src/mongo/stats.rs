@@ -20,7 +20,8 @@ use crate::frame::{output, Ctx, ExitCode};
 use crate::mongo::client;
 
 pub async fn run(ctx: &Ctx, db: Option<&str>) -> Result<ExitCode> {
-    let mongo_client = match client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await {
+    let mongo_client = match client::connect(&ctx.profile.mongodb, ctx.timeout, ctx.insecure).await
+    {
         Ok(mongo_client) => mongo_client,
         Err(err) => {
             eprintln!("error: {err:#}");
@@ -43,7 +44,10 @@ pub async fn run(ctx: &Ctx, db: Option<&str>) -> Result<ExitCode> {
             Ok(ExitCode::from(unix::CONNECTION_FAILED))
         }
         Err(_elapsed) => {
-            eprintln!("error: mongodb stats query timed out after {:?}", ctx.timeout);
+            eprintln!(
+                "error: mongodb stats query timed out after {:?}",
+                ctx.timeout
+            );
             Ok(ExitCode::from(unix::CONNECTION_FAILED))
         }
     }
@@ -86,13 +90,25 @@ async fn fetch_overview_report(mongo_client: &Client) -> Result<StatReport> {
 /// `collections`/`objects` left unset (the caller fills those in via a
 /// follow-up `dbStats` call per database).
 fn parse_list_databases(doc: &Document) -> Result<Vec<DbSummary>> {
-    let entries = doc.get_array("databases").context("listDatabases response is missing 'databases'")?;
+    let entries = doc
+        .get_array("databases")
+        .context("listDatabases response is missing 'databases'")?;
     let mut summaries = Vec::with_capacity(entries.len());
     for entry in entries {
-        let entry = entry.as_document().context("listDatabases 'databases' entry is not a document")?;
-        let name = entry.get_str("name").context("database entry is missing 'name'")?.to_string();
+        let entry = entry
+            .as_document()
+            .context("listDatabases 'databases' entry is not a document")?;
+        let name = entry
+            .get_str("name")
+            .context("database entry is missing 'name'")?
+            .to_string();
         let size_on_disk = bson_i64(entry, "sizeOnDisk").unwrap_or(0);
-        summaries.push(DbSummary { name, size_on_disk, collections: None, objects: None });
+        summaries.push(DbSummary {
+            name,
+            size_on_disk,
+            collections: None,
+            objects: None,
+        });
     }
     Ok(summaries)
 }
@@ -104,14 +120,20 @@ fn build_overview_report(summaries: &[DbSummary]) -> StatReport {
             vec![
                 s.name.clone(),
                 s.size_on_disk.to_string(),
-                s.collections.map_or_else(|| "-".to_string(), |v| v.to_string()),
+                s.collections
+                    .map_or_else(|| "-".to_string(), |v| v.to_string()),
                 s.objects.map_or_else(|| "-".to_string(), |v| v.to_string()),
             ]
         })
         .collect();
 
     StatReport {
-        columns: vec!["database".to_string(), "sizeOnDisk".to_string(), "collections".to_string(), "objects".to_string()],
+        columns: vec![
+            "database".to_string(),
+            "sizeOnDisk".to_string(),
+            "collections".to_string(),
+            "objects".to_string(),
+        ],
         rows,
     }
 }
@@ -140,16 +162,29 @@ struct CollStat {
 
 impl CollStat {
     fn unavailable(name: String) -> Self {
-        Self { name, count: None, size: None, storage_size: None, total_index_size: None, avg_obj_size: None }
+        Self {
+            name,
+            count: None,
+            size: None,
+            storage_size: None,
+            total_index_size: None,
+            avg_obj_size: None,
+        }
     }
 }
 
 async fn fetch_db_report(mongo_client: &Client, db_name: &str) -> Result<StatReport> {
     let db: Database = mongo_client.database(db_name);
-    let stats_doc = db.run_command(doc! { "dbStats": 1 }).await.context("dbStats failed")?;
+    let stats_doc = db
+        .run_command(doc! { "dbStats": 1 })
+        .await
+        .context("dbStats failed")?;
     let totals = parse_db_totals(&stats_doc);
 
-    let names = db.list_collection_names().await.context("failed to list collections")?;
+    let names = db
+        .list_collection_names()
+        .await
+        .context("failed to list collections")?;
     let mut collections = Vec::with_capacity(names.len());
     for name in names {
         // A failing collStats (e.g. run against a view, which doesn't
@@ -257,7 +292,15 @@ mod tests {
         };
         let summaries = parse_list_databases(&doc).unwrap();
         assert_eq!(summaries.len(), 2);
-        assert_eq!(summaries[1], DbSummary { name: "app".to_string(), size_on_disk: 1_048_576, collections: None, objects: None });
+        assert_eq!(
+            summaries[1],
+            DbSummary {
+                name: "app".to_string(),
+                size_on_disk: 1_048_576,
+                collections: None,
+                objects: None
+            }
+        );
     }
 
     #[test]
@@ -268,15 +311,28 @@ mod tests {
 
     #[test]
     fn build_overview_report_renders_dash_for_unset_totals() {
-        let summaries = vec![DbSummary { name: "app".to_string(), size_on_disk: 100, collections: None, objects: None }];
+        let summaries = vec![DbSummary {
+            name: "app".to_string(),
+            size_on_disk: 100,
+            collections: None,
+            objects: None,
+        }];
         let report = build_overview_report(&summaries);
-        assert_eq!(report.columns, vec!["database", "sizeOnDisk", "collections", "objects"]);
+        assert_eq!(
+            report.columns,
+            vec!["database", "sizeOnDisk", "collections", "objects"]
+        );
         assert_eq!(report.rows[0], vec!["app", "100", "-", "-"]);
     }
 
     #[test]
     fn build_overview_report_fills_in_totals_when_present() {
-        let summaries = vec![DbSummary { name: "app".to_string(), size_on_disk: 100, collections: Some(3), objects: Some(42) }];
+        let summaries = vec![DbSummary {
+            name: "app".to_string(),
+            size_on_disk: 100,
+            collections: Some(3),
+            objects: Some(42),
+        }];
         let report = build_overview_report(&summaries);
         assert_eq!(report.rows[0], vec!["app", "100", "3", "42"]);
     }
@@ -350,7 +406,10 @@ mod tests {
         };
         let report = build_db_report(&collections, &totals);
         assert_eq!(report.rows.len(), 2);
-        assert_eq!(report.rows[1], vec!["TOTAL", "10", "2000", "4096", "1024", "200"]);
+        assert_eq!(
+            report.rows[1],
+            vec!["TOTAL", "10", "2000", "4096", "1024", "200"]
+        );
     }
 
     #[test]

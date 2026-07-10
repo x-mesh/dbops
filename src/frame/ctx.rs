@@ -34,8 +34,9 @@ impl Ctx {
         let env: HashMap<String, String> = std::env::vars().collect();
         let profile = config::resolve(cli, &env, cli.config.as_deref())?;
         let timeout = match &cli.timeout {
-            Some(raw) => parse_timeout(raw)
-                .with_context(|| format!("invalid --timeout value: {raw:?}"))?,
+            Some(raw) => {
+                parse_timeout(raw).with_context(|| format!("invalid --timeout value: {raw:?}"))?
+            }
             None => DEFAULT_TIMEOUT,
         };
         Ok(Self {

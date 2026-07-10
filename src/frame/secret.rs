@@ -114,8 +114,8 @@ fn resolve_cmd(cmd: &str, timeout: Duration) -> Result<String> {
     if !output.status.success() {
         bail!("secret command exited with {}", output.status);
     }
-    let stdout = String::from_utf8(output.stdout)
-        .context("secret command output is not valid UTF-8")?;
+    let stdout =
+        String::from_utf8(output.stdout).context("secret command output is not valid UTF-8")?;
     Ok(stdout.trim_end_matches('\n').to_string())
 }
 
@@ -124,7 +124,10 @@ fn resolve_cmd(cmd: &str, timeout: Duration) -> Result<String> {
 /// error to report.
 #[cfg(unix)]
 fn kill_best_effort(pid: u32) {
-    let _ = Command::new("kill").arg("-KILL").arg(pid.to_string()).status();
+    let _ = Command::new("kill")
+        .arg("-KILL")
+        .arg(pid.to_string())
+        .status();
 }
 
 #[cfg(not(unix))]
@@ -224,7 +227,9 @@ mod tests {
 
     #[test]
     fn resolve_cmd_nonzero_exit_errors() {
-        let err = SecretRef::parse("cmd:sh -c 'exit 3'").resolve().unwrap_err();
+        let err = SecretRef::parse("cmd:sh -c 'exit 3'")
+            .resolve()
+            .unwrap_err();
         assert!(err.to_string().contains("exited with"));
     }
 

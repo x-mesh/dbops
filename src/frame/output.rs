@@ -200,7 +200,11 @@ mod tests {
         };
         let out = render_check("pg", "check", &result, false);
         assert!(out.contains("line1\\nline2\\ttabbed"));
-        assert_eq!(out.matches('\n').count(), 0, "escaped output must stay one line");
+        assert_eq!(
+            out.matches('\n').count(),
+            0,
+            "escaped output must stay one line"
+        );
     }
 
     #[test]

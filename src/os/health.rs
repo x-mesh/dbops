@@ -50,11 +50,15 @@ pub async fn health(client: &OpenSearch, timeout: Duration, args: &HealthArgs) -
             let status_code = response.status_code();
             if !status_code.is_success() {
                 let body_text = response.text().await.unwrap_or_default();
-                return unknown(format!("opensearch returned HTTP {status_code}: {body_text}"));
+                return unknown(format!(
+                    "opensearch returned HTTP {status_code}: {body_text}"
+                ));
             }
             match response.json::<ClusterHealthBody>().await {
                 Ok(body) => build_result(&body, warning, critical),
-                Err(err) => unknown(format!("failed to parse opensearch cluster health response: {err}")),
+                Err(err) => unknown(format!(
+                    "failed to parse opensearch cluster health response: {err}"
+                )),
             }
         }
         Ok(Err(err)) => unknown(format!("failed to reach opensearch cluster: {err}")),
@@ -75,12 +79,20 @@ fn parse_threshold(flag: &str, raw: Option<&str>) -> Result<Option<u64>, String>
     }
 }
 
-fn build_result(body: &ClusterHealthBody, warning: Option<u64>, critical: Option<u64>) -> CheckResult {
+fn build_result(
+    body: &ClusterHealthBody,
+    warning: Option<u64>,
+    critical: Option<u64>,
+) -> CheckResult {
     let base_status = match body.status.as_str() {
         "green" => CheckStatus::Ok,
         "yellow" => CheckStatus::Warning,
         "red" => CheckStatus::Critical,
-        other => return unknown(format!("opensearch reported an unrecognized cluster status: {other:?}")),
+        other => {
+            return unknown(format!(
+                "opensearch reported an unrecognized cluster status: {other:?}"
+            ))
+        }
     };
 
     let threshold_status = match critical {
@@ -138,7 +150,11 @@ fn build_result(body: &ClusterHealthBody, warning: Option<u64>, critical: Option
         },
     ];
 
-    CheckResult { status, summary, metrics }
+    CheckResult {
+        status,
+        summary,
+        metrics,
+    }
 }
 
 /// The worse (higher-severity) of two statuses, `Ok < Warning < Critical`.
@@ -162,7 +178,11 @@ fn worse(a: CheckStatus, b: CheckStatus) -> CheckStatus {
 }
 
 fn unknown(summary: String) -> CheckResult {
-    CheckResult { status: CheckStatus::Unknown, summary, metrics: vec![] }
+    CheckResult {
+        status: CheckStatus::Unknown,
+        summary,
+        metrics: vec![],
+    }
 }
 
 #[cfg(test)]
@@ -234,7 +254,11 @@ mod tests {
     #[test]
     fn unassigned_shards_metric_carries_threshold_strings() {
         let result = build_result(&body("green", 2), Some(5), Some(10));
-        let metric = result.metrics.iter().find(|m| m.name == "unassigned_shards").unwrap();
+        let metric = result
+            .metrics
+            .iter()
+            .find(|m| m.name == "unassigned_shards")
+            .unwrap();
         assert_eq!(metric.warn.as_deref(), Some("5"));
         assert_eq!(metric.crit.as_deref(), Some("10"));
     }
@@ -275,8 +299,14 @@ mod tests {
 
     #[test]
     fn worse_picks_the_higher_severity() {
-        assert_eq!(worse(CheckStatus::Ok, CheckStatus::Warning), CheckStatus::Warning);
-        assert_eq!(worse(CheckStatus::Critical, CheckStatus::Warning), CheckStatus::Critical);
+        assert_eq!(
+            worse(CheckStatus::Ok, CheckStatus::Warning),
+            CheckStatus::Warning
+        );
+        assert_eq!(
+            worse(CheckStatus::Critical, CheckStatus::Warning),
+            CheckStatus::Critical
+        );
         assert_eq!(worse(CheckStatus::Ok, CheckStatus::Ok), CheckStatus::Ok);
     }
 }

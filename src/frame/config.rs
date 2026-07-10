@@ -149,7 +149,11 @@ struct FileRedis {
 ///   (typically `cli.config.clone()`), or `None` to fall back to
 ///   `~/.dbops.toml`. A missing file at the fallback location is not an
 ///   error; a missing file at an explicitly given path is.
-pub fn resolve(cli: &Cli, env: &HashMap<String, String>, config_path: Option<&Path>) -> Result<ResolvedProfile> {
+pub fn resolve(
+    cli: &Cli,
+    env: &HashMap<String, String>,
+    config_path: Option<&Path>,
+) -> Result<ResolvedProfile> {
     let loaded = load_file_config(config_path)?;
     let file = &loaded.data;
 
@@ -170,7 +174,11 @@ pub fn resolve(cli: &Cli, env: &HashMap<String, String>, config_path: Option<&Pa
         );
     }
 
-    let protected = file.safety.protected_profiles.iter().any(|p| p == &profile_name);
+    let protected = file
+        .safety
+        .protected_profiles
+        .iter()
+        .any(|p| p == &profile_name);
 
     let os_file = file_profile.and_then(|p| p.opensearch.as_ref());
     let opensearch = OpenSearchProfile {
@@ -253,7 +261,11 @@ pub fn resolve(cli: &Cli, env: &HashMap<String, String>, config_path: Option<&Pa
 /// flags yet — but every field already merges through this function, so
 /// wiring up a real flag later is a one-line change at the call site, not a
 /// redesign of the merge order.
-fn pick<'a>(flag: Option<&'a str>, env: Option<&'a str>, config: Option<&'a str>) -> Option<&'a str> {
+fn pick<'a>(
+    flag: Option<&'a str>,
+    env: Option<&'a str>,
+    config: Option<&'a str>,
+) -> Option<&'a str> {
     flag.or(env).or(config)
 }
 
@@ -261,7 +273,11 @@ fn pick_owned(flag: Option<&str>, env: Option<&str>, config: Option<&str>) -> Op
     pick(flag, env, config).map(str::to_string)
 }
 
-fn pick_secret(flag: Option<&str>, env: Option<&str>, config: Option<&str>) -> Result<Option<Secret>> {
+fn pick_secret(
+    flag: Option<&str>,
+    env: Option<&str>,
+    config: Option<&str>,
+) -> Result<Option<Secret>> {
     match pick(flag, env, config) {
         Some(raw) => Ok(Some(Secret::from(SecretRef::parse(raw).resolve()?))),
         None => Ok(None),
@@ -284,7 +300,12 @@ fn pick_port(flag: Option<u16>, env: Option<&str>, config: Option<u16>) -> Resul
 /// Comma-separated in the env var, a native TOML array in the config file.
 fn pick_vec(env: Option<&str>, config: Option<&[String]>) -> Vec<String> {
     if let Some(raw) = env {
-        return raw.split(',').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect();
+        return raw
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect();
     }
     config.map(<[String]>::to_vec).unwrap_or_default()
 }
@@ -333,10 +354,14 @@ fn load_file_config(explicit_path: Option<&Path>) -> Result<LoadedConfig> {
         eprintln!("warning: {warning}");
     }
 
-    let raw = fs::read_to_string(&path).with_context(|| format!("failed to read config file: {}", path.display()))?;
-    let data: FileConfig =
-        toml::from_str(&raw).with_context(|| format!("failed to parse config file: {}", path.display()))?;
-    Ok(LoadedConfig { data, file_present: true })
+    let raw = fs::read_to_string(&path)
+        .with_context(|| format!("failed to read config file: {}", path.display()))?;
+    let data: FileConfig = toml::from_str(&raw)
+        .with_context(|| format!("failed to parse config file: {}", path.display()))?;
+    Ok(LoadedConfig {
+        data,
+        file_present: true,
+    })
 }
 
 /// Returns a warning message if the config file at `path` is readable or
@@ -376,7 +401,9 @@ mod tests {
 
     fn test_cli(profile: Option<&str>) -> Cli {
         Cli {
-            command: Commands::Sys(SysArgs { command: SysCommand::Check }),
+            command: Commands::Sys(SysArgs {
+                command: SysCommand::Check,
+            }),
             profile: profile.map(str::to_string),
             config: None,
             json: false,
@@ -393,8 +420,14 @@ mod tests {
     fn unique_temp_path() -> PathBuf {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        std::env::temp_dir().join(format!("dbops-config-test-{}-{n}-{nanos}.toml", std::process::id()))
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "dbops-config-test-{}-{n}-{nanos}.toml",
+            std::process::id()
+        ))
     }
 
     fn write_temp_config(contents: &str) -> PathBuf {
@@ -411,7 +444,10 @@ mod tests {
 
     #[test]
     fn pick_priority_flag_env_config_default() {
-        assert_eq!(pick(Some("flag"), Some("env"), Some("config")), Some("flag"));
+        assert_eq!(
+            pick(Some("flag"), Some("env"), Some("config")),
+            Some("flag")
+        );
         assert_eq!(pick(None, Some("env"), Some("config")), Some("env"));
         assert_eq!(pick(None, None, Some("config")), Some("config"));
         assert_eq!(pick(None, None, None), None);

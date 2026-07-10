@@ -20,8 +20,14 @@ pub async fn run(n: Option<u32>, ctx: &Ctx) -> Result<ExitCode> {
         }
     };
 
-    let raw = match connect::call::<redis::Value>(ctx, redis::cmd("SLOWLOG").arg("GET").arg(n).query_async(&mut conn))
-        .await
+    let raw = match connect::call::<redis::Value>(
+        ctx,
+        redis::cmd("SLOWLOG")
+            .arg("GET")
+            .arg(n)
+            .query_async(&mut conn),
+    )
+    .await
     {
         Ok(raw) => raw,
         Err(err) => {
@@ -42,21 +48,38 @@ pub async fn run(n: Option<u32>, ctx: &Ctx) -> Result<ExitCode> {
 /// were added in Redis 4.0 and render as `"-"` on older servers/entries
 /// that omit them.
 fn build_report(value: &redis::Value) -> StatReport {
-    let columns = ["id", "timestamp", "duration_us", "command", "client_addr", "client_name"]
-        .into_iter()
-        .map(String::from)
-        .collect();
+    let columns = [
+        "id",
+        "timestamp",
+        "duration_us",
+        "command",
+        "client_addr",
+        "client_name",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect();
 
     let entries = value.as_sequence().unwrap_or(&[]);
     let rows = entries
         .iter()
         .filter_map(|entry| entry.as_sequence())
         .map(|fields| {
-            let get = |i: usize| fields.get(i).map(value_to_string).unwrap_or_else(|| "-".to_string());
+            let get = |i: usize| {
+                fields
+                    .get(i)
+                    .map(value_to_string)
+                    .unwrap_or_else(|| "-".to_string())
+            };
             let command = fields
                 .get(3)
                 .and_then(|v| v.as_sequence())
-                .map(|args| args.iter().map(value_to_string).collect::<Vec<_>>().join(" "))
+                .map(|args| {
+                    args.iter()
+                        .map(value_to_string)
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                })
                 .unwrap_or_else(|| "-".to_string());
             vec![get(0), get(1), get(2), command, get(4), get(5)]
         })
@@ -86,7 +109,11 @@ mod tests {
             Value::Int(id),
             Value::Int(ts),
             Value::Int(dur),
-            Value::Array(args.iter().map(|a| Value::BulkString(a.as_bytes().to_vec())).collect()),
+            Value::Array(
+                args.iter()
+                    .map(|a| Value::BulkString(a.as_bytes().to_vec()))
+                    .collect(),
+            ),
             Value::BulkString(addr.as_bytes().to_vec()),
             Value::BulkString(name.as_bytes().to_vec()),
         ])
@@ -94,9 +121,19 @@ mod tests {
 
     #[test]
     fn parses_full_six_field_entries() {
-        let value = Value::Array(vec![full_entry(1, 1_600_000_000, 1234, &["GET", "foo"], "127.0.0.1:1234", "")]);
+        let value = Value::Array(vec![full_entry(
+            1,
+            1_600_000_000,
+            1234,
+            &["GET", "foo"],
+            "127.0.0.1:1234",
+            "",
+        )]);
         let report = build_report(&value);
-        assert_eq!(report.rows[0], vec!["1", "1600000000", "1234", "GET foo", "127.0.0.1:1234", ""]);
+        assert_eq!(
+            report.rows[0],
+            vec!["1", "1600000000", "1234", "GET foo", "127.0.0.1:1234", ""]
+        );
     }
 
     #[test]
@@ -108,7 +145,10 @@ mod tests {
             Value::Array(vec![Value::BulkString(b"PING".to_vec())]),
         ])]);
         let report = build_report(&value);
-        assert_eq!(report.rows[0], vec!["2", "1600000001", "50", "PING", "-", "-"]);
+        assert_eq!(
+            report.rows[0],
+            vec!["2", "1600000001", "50", "PING", "-", "-"]
+        );
     }
 
     #[test]

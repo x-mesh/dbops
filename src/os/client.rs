@@ -83,7 +83,11 @@ impl ConnectionPool for RoundRobinConnectionPool {
 /// `tokio::time::timeout(ctx.timeout, ...)` for a deadline that's
 /// enforced regardless of how the HTTP client itself behaves at the edges
 /// (DNS resolution, connect, TLS handshake).
-pub fn connect(profile: &OpenSearchProfile, timeout: Duration, insecure: bool) -> Result<OpenSearch> {
+pub fn connect(
+    profile: &OpenSearchProfile,
+    timeout: Duration,
+    insecure: bool,
+) -> Result<OpenSearch> {
     if profile.hosts.is_empty() {
         bail!("no opensearch hosts configured (set [profiles.<name>.opensearch] hosts, or DBOPS_OS_HOSTS)");
     }
@@ -110,7 +114,10 @@ pub fn connect(profile: &OpenSearchProfile, timeout: Duration, insecure: bool) -
     }
 
     let credentials = match (&profile.username, &profile.password) {
-        (Some(user), Some(pass)) => Some(Credentials::Basic(user.expose().to_string(), pass.expose().to_string())),
+        (Some(user), Some(pass)) => Some(Credentials::Basic(
+            user.expose().to_string(),
+            pass.expose().to_string(),
+        )),
         (None, None) => None,
         _ => bail!("opensearch basic auth requires both username and password to be set"),
     };
@@ -121,7 +128,9 @@ pub fn connect(profile: &OpenSearchProfile, timeout: Duration, insecure: bool) -
         builder = builder.auth(creds);
     }
 
-    let transport = builder.build().context("failed to build opensearch transport")?;
+    let transport = builder
+        .build()
+        .context("failed to build opensearch transport")?;
     Ok(OpenSearch::new(transport))
 }
 
@@ -155,25 +164,43 @@ mod tests {
 
     #[test]
     fn unsupported_scheme_is_an_error() {
-        let err = connect(&profile(&["ftp://os.internal:9200"]), Duration::from_secs(5), false).unwrap_err();
+        let err = connect(
+            &profile(&["ftp://os.internal:9200"]),
+            Duration::from_secs(5),
+            false,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("unsupported scheme"));
     }
 
     #[test]
     fn insecure_with_https_host_is_rejected() {
-        let err = connect(&profile(&["https://os.internal:9200"]), Duration::from_secs(5), true).unwrap_err();
+        let err = connect(
+            &profile(&["https://os.internal:9200"]),
+            Duration::from_secs(5),
+            true,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("--insecure is not supported"));
     }
 
     #[test]
     fn insecure_with_http_only_hosts_is_fine() {
-        let result = connect(&profile(&["http://os.internal:9200"]), Duration::from_secs(5), true);
+        let result = connect(
+            &profile(&["http://os.internal:9200"]),
+            Duration::from_secs(5),
+            true,
+        );
         assert!(result.is_ok());
     }
 
     #[test]
     fn valid_http_host_connects() {
-        let result = connect(&profile(&["http://localhost:9200"]), Duration::from_secs(5), false);
+        let result = connect(
+            &profile(&["http://localhost:9200"]),
+            Duration::from_secs(5),
+            false,
+        );
         assert!(result.is_ok());
     }
 
@@ -189,7 +216,9 @@ mod tests {
         let mut p = profile(&["http://localhost:9200"]);
         p.username = Some(Secret::from("user".to_string()));
         let err = connect(&p, Duration::from_secs(5), false).unwrap_err();
-        assert!(err.to_string().contains("requires both username and password"));
+        assert!(err
+            .to_string()
+            .contains("requires both username and password"));
     }
 
     #[test]

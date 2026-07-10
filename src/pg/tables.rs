@@ -63,17 +63,34 @@ struct TableRow {
 }
 
 async fn fetch(pg_client: &Client, top: i64) -> Result<Vec<TableRow>> {
-    let rows = pg_client.query(QUERY, &[&top]).await.context("pg_stat_user_tables query failed")?;
+    let rows = pg_client
+        .query(QUERY, &[&top])
+        .await
+        .context("pg_stat_user_tables query failed")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in &rows {
         out.push(TableRow {
-            schema: row.try_get(0).context("unexpected pg_stat_user_tables row shape")?,
-            table: row.try_get(1).context("unexpected pg_stat_user_tables row shape")?,
-            total_size: row.try_get(2).context("unexpected pg_stat_user_tables row shape")?,
-            table_size: row.try_get(3).context("unexpected pg_stat_user_tables row shape")?,
-            index_size: row.try_get(4).context("unexpected pg_stat_user_tables row shape")?,
-            live_tup: row.try_get(5).context("unexpected pg_stat_user_tables row shape")?,
-            dead_tup: row.try_get(6).context("unexpected pg_stat_user_tables row shape")?,
+            schema: row
+                .try_get(0)
+                .context("unexpected pg_stat_user_tables row shape")?,
+            table: row
+                .try_get(1)
+                .context("unexpected pg_stat_user_tables row shape")?,
+            total_size: row
+                .try_get(2)
+                .context("unexpected pg_stat_user_tables row shape")?,
+            table_size: row
+                .try_get(3)
+                .context("unexpected pg_stat_user_tables row shape")?,
+            index_size: row
+                .try_get(4)
+                .context("unexpected pg_stat_user_tables row shape")?,
+            live_tup: row
+                .try_get(5)
+                .context("unexpected pg_stat_user_tables row shape")?,
+            dead_tup: row
+                .try_get(6)
+                .context("unexpected pg_stat_user_tables row shape")?,
         });
     }
     Ok(out)
@@ -83,10 +100,16 @@ async fn fetch(pg_client: &Client, top: i64) -> Result<Vec<TableRow>> {
 /// `0.0%`) when a table has never been touched (`live_tup + dead_tup == 0`)
 /// -- dividing zero by zero would misrepresent "no data yet" as "no bloat".
 fn build_report(rows: &[TableRow]) -> StatReport {
-    let columns = ["table", "total_size", "table_size", "index_size", "dead_pct"]
-        .into_iter()
-        .map(String::from)
-        .collect();
+    let columns = [
+        "table",
+        "total_size",
+        "table_size",
+        "index_size",
+        "dead_pct",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect();
 
     let out_rows = rows
         .iter()
@@ -107,7 +130,10 @@ fn build_report(rows: &[TableRow]) -> StatReport {
         })
         .collect();
 
-    StatReport { columns, rows: out_rows }
+    StatReport {
+        columns,
+        rows: out_rows,
+    }
 }
 
 #[cfg(test)]
@@ -129,7 +155,16 @@ mod tests {
     #[test]
     fn combines_schema_and_table_name() {
         let report = build_report(&[row("public", "orders", 100, 10)]);
-        assert_eq!(report.columns, vec!["table", "total_size", "table_size", "index_size", "dead_pct"]);
+        assert_eq!(
+            report.columns,
+            vec![
+                "table",
+                "total_size",
+                "table_size",
+                "index_size",
+                "dead_pct"
+            ]
+        );
         assert_eq!(report.rows[0][0], "public.orders");
     }
 
