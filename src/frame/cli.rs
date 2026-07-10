@@ -71,4 +71,10 @@ pub enum Commands {
     Tcp(net::TcpArgs),
     /// Local host system checks
     Sys(sys::SysArgs),
+    /// Generate a shell completion script (source or install it yourself,
+    /// e.g. `dbops completion bash > /etc/bash_completion.d/dbops`)
+    Completion {
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
 }

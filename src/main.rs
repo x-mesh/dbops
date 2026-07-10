@@ -22,6 +22,16 @@ async fn main() -> ExitCode {
         .expect("install rustls ring crypto provider");
 
     let cli = Cli::parse();
+
+    // Handled before Ctx::build() -- a completion script needs the static
+    // Cli::command() definition only, never a resolved DB profile, so this
+    // must not fail (or even attempt) config/env resolution.
+    if let Commands::Completion { shell } = &cli.command {
+        let mut cmd = <Cli as clap::CommandFactory>::command();
+        clap_complete::generate(*shell, &mut cmd, "dbops", &mut std::io::stdout());
+        return ExitCode::SUCCESS;
+    }
+
     let ctx = match Ctx::build(&cli) {
         Ok(ctx) => ctx,
         Err(err) => {
@@ -38,6 +48,7 @@ async fn main() -> ExitCode {
         Commands::Http(args) => net::run_http(args, &ctx).await,
         Commands::Tcp(args) => net::run_tcp(args, &ctx).await,
         Commands::Sys(args) => sys::run(args, &ctx).await,
+        Commands::Completion { .. } => unreachable!("handled before Ctx::build above"),
     };
 
     match result {
