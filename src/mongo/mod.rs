@@ -6,9 +6,12 @@ use clap::{Args, Subcommand};
 use crate::frame::{Ctx, ExitCode, HealthArgs};
 
 pub mod client;
+mod connections;
 mod health;
+mod oplog;
 mod replset;
 mod replset_status;
+mod stats;
 
 #[derive(Args, Debug)]
 pub struct MongoArgs {
@@ -66,6 +69,9 @@ pub async fn run(args: &MongoArgs, ctx: &Ctx) -> Result<ExitCode> {
     match &args.command {
         MongoCommand::Health(health_args) => health::run(ctx, health_args).await,
         MongoCommand::Replset => replset::run(ctx).await,
+        MongoCommand::Stats { db } => stats::run(ctx, db.as_deref()).await,
+        MongoCommand::Oplog => oplog::run(ctx).await,
+        MongoCommand::Connections => connections::run(ctx).await,
         _ => anyhow::bail!("dbops mongo: not implemented ({:?})", args.command),
     }
 }
