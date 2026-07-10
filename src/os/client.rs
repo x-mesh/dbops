@@ -131,6 +131,9 @@ mod tests {
     use crate::frame::secret::Secret;
 
     fn profile(hosts: &[&str]) -> OpenSearchProfile {
+        // reqwest's ClientBuilder needs a process-wide rustls CryptoProvider;
+        // main() installs it for the binary, but the test harness does not.
+        let _ = rustls::crypto::ring::default_provider().install_default();
         OpenSearchProfile {
             hosts: hosts.iter().map(|h| h.to_string()).collect(),
             username: None,
