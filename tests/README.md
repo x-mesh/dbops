@@ -77,37 +77,25 @@ command, so having a guaranteed, always-primary target to connect directly
 to is sufficient (no need to ever resolve the other two members from the
 host).
 
-## Known defects (found during verification, not fixed here)
+## Known defects (found during verification -- all fixed since)
 
-Out of this task's file ownership (`src/**` is owned by other in-flight
-work) -- reported here and to the team lead for follow-up, not patched.
+This harness's first full run surfaced three threshold-handling defects.
+All three were fixed in `1c16b7d` ("fix: unify health threshold parsing
+across domains"), which introduced a shared `frame::health::parse_threshold`
+used by all four domains. Kept here as a record of what the harness caught:
 
-1. **pg health rejects a literal zero threshold.** `pg health --critical 0s`
-   / `--warning 0s` returns UNKNOWN (exit 3) with "invalid --critical
-   value", instead of being accepted as an ordinary zero-tolerance
-   threshold. `src/pg/health.rs`'s `parse_threshold()` reuses
-   `frame::ctx::parse_timeout` (written for `--timeout`, where a zero
-   duration is meaningless) whose `n > 0` filter rejects the parsed value.
-   `os`/`mongo`/`redis`'s own threshold parsers all accept a literal `0`
-   without issue -- `pg` is the outlier.
-2. **mongo health's exit code leaks outside the nagios vocabulary on a bad
-   flag.** `os health`/`pg health` both catch a `--warning`/`--critical`
-   parse failure *before* building the nagios result and turn it into
-   `CheckStatus::Unknown` (exit 3), so the exit code contract holds even
-   for a usage error. `mongo health` does not: `src/mongo/health.rs`'s
-   `run()` parses the flags with `?` before ever calling `check()`, so a
-   bad value propagates as a bare `anyhow::Error` out through `mongo::run()`
-   into `main.rs`, landing on `ExitCode::FAILURE` (1) instead of 3.
-3. **redis health silently ignores a malformed threshold instead of
-   erroring, and its flag syntax is inconsistent with pg/mongo.**
-   `src/redis/health.rs`'s `evaluate_thresholds()` parses `--warning`/
-   `--critical` with `.parse::<f64>().ok()`, so an unparseable value is
-   silently treated as "no threshold configured" rather than surfaced as a
-   usage error -- a typo in `--critical` silently disables the check. It
-   also only accepts a bare number of milliseconds (`50`), while pg/mongo
-   accept duration-style strings (`5s`, `500ms`, `10`); passing a
-   pg/mongo-style value (`50ms`) to `redis health` fails to parse and is
-   silently dropped rather than erroring or being interpreted.
+1. **pg health rejected a literal zero threshold** (`--critical 0s` -> exit
+   3) because it reused `frame::ctx::parse_timeout`'s `n > 0` filter.
+   Fixed: zero is a valid zero-tolerance threshold in every domain.
+2. **mongo health leaked exit 1 on a malformed flag** -- the parse failure
+   escaped as a bare `anyhow::Error` instead of the argument-error path.
+   Fixed: all domains now reject malformed `--warning`/`--critical` with
+   a clear stderr message and exit 3, before any connection attempt.
+3. **redis health silently ignored malformed thresholds** (`.ok()` parse)
+   and only accepted bare-millisecond numbers. Fixed: same shared parser,
+   same duration-suffix syntax (`500ms`/`5s`/`2m`/bare number) everywhere;
+   `os health` deliberately rejects duration-style values since its
+   thresholds are counts, not durations.
 
 ## CI
 
