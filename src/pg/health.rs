@@ -68,11 +68,18 @@ async fn run(
         .try_get(0)
         .context("unexpected pg_is_in_recovery() row shape")?;
 
-    let (role, lag_seconds) = if in_recovery {
-        (Role::Standby, standby_lag_seconds(&pg_client).await?)
+    let replication = if in_recovery {
+        Replication::Standby {
+            lag_seconds: standby_lag_seconds(&pg_client).await?,
+        }
     } else {
-        (Role::Primary, primary_lag_seconds(&pg_client).await?)
+        let (connected_standbys, lag_seconds) = primary_replication(&pg_client).await?;
+        Replication::Primary {
+            connected_standbys,
+            lag_seconds,
+        }
     };
+    let lag_seconds = replication.lag_seconds();
 
     let mut metrics = Vec::new();
     if let Some(lag) = lag_seconds {
@@ -103,15 +110,41 @@ async fn run(
 
     Ok(CheckResult {
         status: evaluate_status(lag_seconds, warning, critical),
-        summary: build_summary(role, lag_seconds),
+        summary: build_summary(&replication),
         metrics,
     })
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Role {
-    Primary,
-    Standby,
+/// This instance's replication role, plus what each role needs to describe
+/// its lag. The two ways lag can be absent are deliberately distinct: a
+/// primary tracks how many standbys are attached, so "connected but caught
+/// up" (a healthy quiet cluster) never gets misreported as "no replicas".
+#[derive(Debug, Clone, PartialEq)]
+enum Replication {
+    /// `lag_seconds` is the worst `replay_lag` across `connected_standbys`
+    /// rows in `pg_stat_replication`. It is `None` — not `0` — whenever no
+    /// standby has outstanding WAL to replay: `replay_lag` is `NULL` until
+    /// there is un-replayed WAL, so a fully caught-up (or briefly idle)
+    /// replica reports no measurable lag even while streaming.
+    Primary {
+        connected_standbys: i64,
+        lag_seconds: Option<f64>,
+    },
+    /// `lag_seconds` is how far behind the last replayed transaction is,
+    /// `None` before anything has been replayed yet.
+    Standby { lag_seconds: Option<f64> },
+}
+
+impl Replication {
+    /// The single lag value fed to the metric and threshold logic, whichever
+    /// role produced it.
+    fn lag_seconds(&self) -> Option<f64> {
+        match self {
+            Replication::Primary { lag_seconds, .. } | Replication::Standby { lag_seconds } => {
+                *lag_seconds
+            }
+        }
+    }
 }
 
 /// Delegates to the shared [`frame::health::parse_threshold`] -- unlike
@@ -144,30 +177,57 @@ fn evaluate_status(
     CheckStatus::Ok
 }
 
-fn build_summary(role: Role, lag_seconds: Option<f64>) -> String {
-    match (role, lag_seconds) {
-        (Role::Primary, Some(lag)) => format!("primary, replica lag {lag:.1}s"),
-        (Role::Primary, None) => "primary, no replicas connected".to_string(),
-        (Role::Standby, Some(lag)) => format!("standby, replay lag {lag:.1}s"),
-        (Role::Standby, None) => "standby, replay lag unknown".to_string(),
+fn build_summary(replication: &Replication) -> String {
+    match replication {
+        // A measurable lag is the headline whenever there is one.
+        Replication::Primary {
+            lag_seconds: Some(lag),
+            ..
+        } => format!("primary, replica lag {lag:.1}s"),
+        // No standby row at all -- a genuinely lone primary.
+        Replication::Primary {
+            connected_standbys: 0,
+            ..
+        } => "primary, no replicas connected".to_string(),
+        // Standbys are streaming, they are simply caught up: replay_lag is
+        // NULL. Distinct from the line above so a healthy quiet cluster
+        // isn't misread as having lost its replicas.
+        Replication::Primary {
+            connected_standbys,
+            lag_seconds: None,
+        } => format!("primary, {connected_standbys} replica(s) connected, no measurable lag"),
+        Replication::Standby {
+            lag_seconds: Some(lag),
+        } => format!("standby, replay lag {lag:.1}s"),
+        Replication::Standby { lag_seconds: None } => "standby, replay lag unknown".to_string(),
     }
 }
 
-/// Primary-side view: the worst (largest) `replay_lag` across every
-/// connected standby, per `pg_stat_replication`. `NULL` (no rows, or every
-/// row's `replay_lag` itself `NULL`) means "no replicas reporting usable
-/// lag" -- reported as `None`, not `0`, so a single-instance primary doesn't
-/// get a fabricated zero-lag metric.
-async fn primary_lag_seconds(pg_client: &Client) -> Result<Option<f64>> {
+/// Primary-side view: how many standbys are streaming, and the worst
+/// (largest) `replay_lag` across them, per `pg_stat_replication`.
+///
+/// The count and the lag answer two different questions. The count is `0`
+/// only when no standby is attached. The lag is `NULL` (reported as `None`,
+/// never a fabricated `0`) whenever no attached standby has un-replayed WAL
+/// -- which includes the common healthy case of a caught-up replica on a
+/// quiet cluster. Reading them together is what lets the summary tell "no
+/// replicas" apart from "replicas connected, nothing to replay".
+async fn primary_replication(pg_client: &Client) -> Result<(i64, Option<f64>)> {
     let row = pg_client
         .query_one(
-            "SELECT EXTRACT(EPOCH FROM MAX(replay_lag))::float8 FROM pg_stat_replication",
+            "SELECT count(*)::int8, EXTRACT(EPOCH FROM MAX(replay_lag))::float8 \
+             FROM pg_stat_replication",
             &[],
         )
         .await
         .context("pg_stat_replication query failed")?;
-    row.try_get(0)
-        .context("unexpected pg_stat_replication row shape")
+    let connected_standbys: i64 = row
+        .try_get(0)
+        .context("unexpected pg_stat_replication row shape")?;
+    let lag_seconds: Option<f64> = row
+        .try_get(1)
+        .context("unexpected pg_stat_replication row shape")?;
+    Ok((connected_standbys, lag_seconds))
 }
 
 /// Standby-side view: how far behind the last replayed transaction is from
@@ -322,7 +382,10 @@ mod tests {
     #[test]
     fn summary_primary_with_lag() {
         assert_eq!(
-            build_summary(Role::Primary, Some(0.3)),
+            build_summary(&Replication::Primary {
+                connected_standbys: 1,
+                lag_seconds: Some(0.3),
+            }),
             "primary, replica lag 0.3s"
         );
     }
@@ -330,15 +393,35 @@ mod tests {
     #[test]
     fn summary_primary_without_replicas() {
         assert_eq!(
-            build_summary(Role::Primary, None),
+            build_summary(&Replication::Primary {
+                connected_standbys: 0,
+                lag_seconds: None,
+            }),
             "primary, no replicas connected"
         );
+    }
+
+    /// The case that broke CI: a replica IS streaming but has caught up, so
+    /// replay_lag is NULL. This must not read as "no replicas connected".
+    #[test]
+    fn summary_primary_with_caught_up_replica_is_not_reported_as_no_replicas() {
+        let summary = build_summary(&Replication::Primary {
+            connected_standbys: 2,
+            lag_seconds: None,
+        });
+        assert_eq!(
+            summary,
+            "primary, 2 replica(s) connected, no measurable lag"
+        );
+        assert!(!summary.contains("no replicas connected"));
     }
 
     #[test]
     fn summary_standby_with_lag() {
         assert_eq!(
-            build_summary(Role::Standby, Some(1.25)),
+            build_summary(&Replication::Standby {
+                lag_seconds: Some(1.25),
+            }),
             "standby, replay lag 1.2s"
         );
     }
@@ -346,8 +429,37 @@ mod tests {
     #[test]
     fn summary_standby_unknown_lag() {
         assert_eq!(
-            build_summary(Role::Standby, None),
+            build_summary(&Replication::Standby { lag_seconds: None }),
             "standby, replay lag unknown"
+        );
+    }
+
+    /// The lag that feeds the metric/threshold logic is the same value
+    /// regardless of which role produced it.
+    #[test]
+    fn lag_seconds_accessor_reads_either_role() {
+        assert_eq!(
+            Replication::Primary {
+                connected_standbys: 1,
+                lag_seconds: Some(2.0),
+            }
+            .lag_seconds(),
+            Some(2.0)
+        );
+        assert_eq!(
+            Replication::Standby {
+                lag_seconds: Some(3.0)
+            }
+            .lag_seconds(),
+            Some(3.0)
+        );
+        assert_eq!(
+            Replication::Primary {
+                connected_standbys: 0,
+                lag_seconds: None,
+            }
+            .lag_seconds(),
+            None
         );
     }
 
