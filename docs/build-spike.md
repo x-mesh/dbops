@@ -187,3 +187,68 @@ default for every `--release` build, not an opt-in step.
       target
 - [x] `sys check` stub runs inside the musl container
 - [x] Binary size recorded (stripped + unstripped, both targets)
+
+## t16 update: hardened release profile (before/after)
+
+Owner: t16. By t16 the codebase had grown from M1's stubs to the full
+feature set (`os`/`mongo`/`pg`/`redis`/`net`/`sys` all implemented, R1-R33),
+so the numbers above are no longer a meaningful baseline for a size
+comparison — they measured a mostly-stub binary. This section measures the
+actual effect of tightening `[profile.release]` on today's full binary,
+built back-to-back on the same commit with only `Cargo.toml`'s profile
+section changed between runs.
+
+```toml
+[profile.release]
+strip = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+opt-level = "z"
+```
+
+`lto = "fat"` (whole-program LTO across every crate in the dependency
+graph, not just this crate) and `codegen-units = 1` (single codegen unit,
+trading parallel compile time for cross-function optimization) are what
+actually shrink the binary; `opt-level = "z"` optimizes for size over speed
+(acceptable here — every domain module is I/O-bound on a 5s network
+timeout, not CPU-bound); `panic = "abort"` drops the unwinding tables
+entirely (fine for a CLI binary with no library consumers that need to
+catch a panic — every error path in this codebase already returns
+`Result`, `panic!` is only ever a genuine bug). Compile time cost: full LTO
++ single codegen unit turns each target's build into a single, only
+sometimes multi-thread-well pass — roughly 1m15s per target on this
+machine, vs. ~8s for the `strip`-only baseline.
+
+| Target | Before (`strip = true` only) | After (hardened profile) | Reduction |
+|---|---|---|---|
+| macOS `aarch64-apple-darwin` (host) | 14,654,336 bytes (~13.97 MiB) | 4,558,928 bytes (~4.35 MiB) | -68.9% |
+| `x86_64-unknown-linux-musl` | 16,388,408 bytes (~15.63 MiB) | 6,640,768 bytes (~6.33 MiB) | -59.5% |
+| `aarch64-unknown-linux-musl` | 14,644,848 bytes (~13.97 MiB) | 5,469,488 bytes (~5.22 MiB) | -62.7% |
+
+Verification re-run against the full (non-stub) codebase, same method as
+the original M1 spike:
+
+- `cargo build --release` (host) and `cargo zigbuild --release --target
+  {x86_64,aarch64}-unknown-linux-musl` all succeed with the hardened
+  profile.
+- `cargo tree -i openssl-sys` / `-i aws-lc-sys` still report "package ID
+  specification did not match any packages" on all 3 targets — the
+  ring-only TLS backend invariant from M1 holds after the full feature set
+  landed, not just at the stub-only spike stage.
+- `cargo test` (dev/test profile, unaffected by `[profile.release]`): 264
+  passed, 0 failed — confirms `panic = "abort"` in the release profile
+  doesn't touch the `cargo test` harness, which needs unwinding to report
+  a failed `#[test]` without aborting the whole run and runs under the
+  separate `test` profile (inherits from `dev`) regardless of what
+  `[profile.release]` says.
+- Both musl binaries re-verified under Alpine (`ldd` → not a dynamic
+  executable, `dbops --version` runs) via `scripts/release-build.sh`'s
+  gate — see that script for the exact commands.
+
+Binary size stayed well under the ~30MB budget flagged as a risk in the
+PRD (§7 "바이너리 크기 폭증(>30MB)으로 scp 배포 부담") even before this
+profile change; the hardening mainly buys back margin for future feature
+growth (mongo/pg/os/redis are all fully implemented now, so this is close
+to the v1 feature ceiling) and slightly faster scp transfer to target
+hosts.

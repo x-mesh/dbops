@@ -53,3 +53,7 @@ sysinfo = "0.39"
 
 [profile.release]
 strip = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+opt-level = "z"
