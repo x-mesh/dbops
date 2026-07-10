@@ -156,4 +156,20 @@ mod tests {
         let report = build_report(&Value::Array(vec![]));
         assert!(report.rows.is_empty());
     }
+
+    /// The `SLOWLOG GET` reply's 3rd field is the command's execution time
+    /// in *microseconds* (Redis docs), not milliseconds -- the column name
+    /// must say so explicitly, in both the table header and `--json`
+    /// (`StatReport.columns` is the single source for both), so a reader
+    /// never has to guess the unit or assume it matches `pg`/`redis health`'s
+    /// millisecond-based duration fields elsewhere in this toolkit.
+    #[test]
+    fn duration_column_states_its_unit_explicitly() {
+        let report = build_report(&Value::Array(vec![]));
+        assert_eq!(report.columns[2], "duration_us");
+        assert!(
+            !report.columns.iter().any(|c| c == "duration"),
+            "bare 'duration' column would leave the unit ambiguous"
+        );
+    }
 }

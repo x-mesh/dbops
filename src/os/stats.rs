@@ -180,6 +180,37 @@ mod tests {
         );
     }
 
+    /// An empty cluster's `--json` output must serialize `rows` as `[]`, not
+    /// `null` -- `StatReport.rows` is a plain `Vec`, not an `Option<Vec>`,
+    /// so serde always writes an array here regardless of emptiness; this
+    /// pins that contract down at the JSON-text level, not just the
+    /// in-memory `Vec::is_empty()` check above. Verified live against a
+    /// real empty-result OpenSearch `_stats` response too (an index pattern
+    /// matching zero indices returns `"indices":{}`, same as this fixture).
+    #[test]
+    fn empty_report_serializes_rows_as_an_empty_json_array_not_null() {
+        let report = build_report(&json!({"indices": {}}));
+        let json_text = serde_json::to_string(&report).unwrap();
+        let value: Value = serde_json::from_str(&json_text).unwrap();
+        assert_eq!(value["rows"], json!([]));
+        assert_ne!(value["rows"], Value::Null);
+    }
+
+    /// `--index <pattern>` matching zero indices ("indices":{} in the raw
+    /// OpenSearch body, exactly what `--index nonexistent-*` returns
+    /// against a live cluster) must also yield an empty `rows`, not a
+    /// missing `columns`.
+    #[test]
+    fn empty_index_pattern_result_yields_empty_rows_with_columns_intact() {
+        let report = build_report(&json!({
+            "_shards": {"total": 0, "successful": 0, "failed": 0},
+            "_all": {"primaries": {}, "total": {}},
+            "indices": {}
+        }));
+        assert!(report.rows.is_empty());
+        assert_eq!(report.columns.len(), 5);
+    }
+
     #[test]
     fn missing_metric_fields_render_as_placeholder() {
         let body = json!({"indices": {"bare": {}}});
