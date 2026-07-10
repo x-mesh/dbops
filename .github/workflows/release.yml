@@ -44,8 +44,12 @@ jobs:
       # provider) + QEMU (so Docker can run the Alpine gate's foreign-arch
       # container -- e.g. arm64 under an amd64 ubuntu-latest runner).
       # macOS builds natively, needs neither.
+      # v2, not v1: zig renamed its release tarballs at 0.15
+      # (zig-linux-x86_64-<v> -> zig-x86_64-linux-<v>), and setup-zig@v1 only
+      # ever asks for the old spelling — so every download mirror 404s for the
+      # ZIG_VERSION pinned above.
       - if: runner.os == 'Linux'
-        uses: mlugg/setup-zig@v1
+        uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
 
