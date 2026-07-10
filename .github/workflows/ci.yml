@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --all-targets
+
+  # Separate job from `check` above: needs Docker + docker compose v2 to
+  # stand up the real pg/mongo/os/redis fixture (tests/compose/docker-compose.yml),
+  # which `check` doesn't need and shouldn't be slowed down by. Own compose
+  # project name (dbops-test) and port range (25xxx-29xxx), so this can run
+  # concurrently with the destructive-matrix job below without colliding.
+  integration:
+    name: integration (SC2/SC3/SC5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: bash tests/integration.sh
+        run: bash tests/integration.sh
+
+  # Also separate from `integration` above (see tests/README.md's "CI"
+  # section): exercises init/reset/seed against the destructive-command
+  # guard, which `integration.sh` deliberately never calls. Own compose
+  # project name (dbops-matrix) and port range, safe to run in parallel
+  # with the `integration` job on the same runner pool.
+  destructive-matrix:
+    name: destructive command guard matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: bash tests/destructive_matrix.sh
+        run: bash tests/destructive_matrix.sh
