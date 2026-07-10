@@ -19,8 +19,9 @@ never fail the run -- this harness can only report on `src/`, not fix it.
 ## What it verifies
 
 - **SC2** -- `pg`/`mongo`/`os`/`redis health` all succeed (exit 0) against a
-  healthy fixture. `pg health` is asserted to carry a `lag` metric (a
-  replica is attached). `os health` accepts a yellow/`WARNING` cluster
+  healthy fixture. `pg health` against the primary is asserted to report the
+  primary role (it deliberately does *not* require a `lag` metric there --
+  see "Known defects" #4). `os health` accepts a yellow/`WARNING` cluster
   (exit 1) as a pass too, per spec, and logs the reported cause.
 - **SC3** -- the exit-code contract: a breached `--critical` threshold
   exits `2`, an unreachable-but-syntactically-valid connection target exits
@@ -82,7 +83,8 @@ host).
 This harness's first full run surfaced three threshold-handling defects.
 All three were fixed in `1c16b7d` ("fix: unify health threshold parsing
 across domains"), which introduced a shared `frame::health::parse_threshold`
-used by all four domains. Kept here as a record of what the harness caught:
+used by all four domains. A fourth, in the harness itself, surfaced once the
+suite was wired into CI. Kept here as a record of what the harness caught:
 
 1. **pg health rejected a literal zero threshold** (`--critical 0s` -> exit
    3) because it reused `frame::ctx::parse_timeout`'s `n > 0` filter.
@@ -96,6 +98,17 @@ used by all four domains. Kept here as a record of what the harness caught:
    same duration-suffix syntax (`500ms`/`5s`/`2m`/bare number) everywhere;
    `os health` deliberately rejects duration-style values since its
    thresholds are counts, not durations.
+4. **SC2 asserted a `lag` metric on the primary** whenever a replica was
+   attached -- a false invariant. The primary's lag is `MAX(replay_lag)`
+   over `pg_stat_replication`, which is `NULL` once every standby is caught
+   up (there is no un-replayed WAL to measure), so by the SC2 point -- after
+   the seed write has replicated and the cluster is idle -- the primary
+   reports no lag and the check failed. This never passed in CI. Fixed on
+   two sides: SC2 now asserts only exit 0 + the primary role, and
+   `pg health`'s summary was corrected to distinguish "replicas connected,
+   caught up" from "no replicas connected" (it previously reported the
+   former as the latter, since `primary_lag_seconds` collapsed a zero row
+   count and a `NULL` lag into the same `None`).
 
 ## CI
 

@@ -292,15 +292,26 @@ check_jq() {
 
 section "SC2: health checks (exit 0)"
 
+# pg health against the primary: exit 0 and a "primary ..." summary.
+#
+# Deliberately NOT asserting a `lag` metric here. The primary's lag is
+# MAX(replay_lag) over pg_stat_replication, which is NULL whenever the
+# standby has no un-replayed WAL -- exactly the state after the seed above
+# has replicated and the cluster goes idle. So a lag metric on the *primary*
+# is genuinely absent for a healthy caught-up cluster; requiring it is a race
+# the primary loses. The replica-side lag guarantee is what SC3 checks below
+# (via use_pg_replica, where pg_last_xact_replay_timestamp() stays non-NULL
+# once the seed is replayed).
 use_pg_primary
 start_ns=$(date +%s%N)
 run_capture dbops pg health --json
 elapsed_ms=$(((($(date +%s%N)) - start_ns) / 1000000))
 if [[ "$CODE" -eq 0 ]]; then
-  if printf '%s' "$OUT" | jq -e '.metrics[] | select(.name == "lag")' >/dev/null 2>&1; then
-    pass "SC2 pg health: exit 0, lag metric present (replica attached), ${elapsed_ms}ms"
+  summary=$(printf '%s' "$OUT" | jq -r '.summary' 2>/dev/null || echo "?")
+  if [[ "$summary" == primary,* ]]; then
+    pass "SC2 pg health: exit 0, role=primary (\"$summary\"), ${elapsed_ms}ms"
   else
-    fail "SC2 pg health: exit 0 but no 'lag' metric (expected one, a replica is attached) -- $(diag)"
+    fail "SC2 pg health: exit 0 but summary is not a primary line -- $(diag)"
   fi
 else
   fail "SC2 pg health: expected exit 0, got $CODE, ${elapsed_ms}ms -- $(diag)"
