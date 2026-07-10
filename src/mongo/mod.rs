@@ -5,6 +5,11 @@ use clap::{Args, Subcommand};
 
 use crate::frame::{Ctx, ExitCode, HealthArgs};
 
+pub mod client;
+mod health;
+mod replset;
+mod replset_status;
+
 #[derive(Args, Debug)]
 pub struct MongoArgs {
     #[command(subcommand)]
@@ -57,6 +62,10 @@ pub enum MongoResetTarget {
     Db { name: String },
 }
 
-pub async fn run(args: &MongoArgs, _ctx: &Ctx) -> Result<ExitCode> {
-    anyhow::bail!("dbops mongo: not implemented ({:?})", args.command)
+pub async fn run(args: &MongoArgs, ctx: &Ctx) -> Result<ExitCode> {
+    match &args.command {
+        MongoCommand::Health(health_args) => health::run(ctx, health_args).await,
+        MongoCommand::Replset => replset::run(ctx).await,
+        _ => anyhow::bail!("dbops mongo: not implemented ({:?})", args.command),
+    }
 }
