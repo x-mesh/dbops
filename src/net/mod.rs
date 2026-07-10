@@ -32,10 +32,10 @@ pub enum TcpCommand {
     },
 }
 
-pub fn run_http(args: &HttpArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run_http(args: &HttpArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops http: not implemented ({:?})", args.command)
 }
 
-pub fn run_tcp(args: &TcpArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run_tcp(args: &TcpArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops tcp: not implemented ({:?})", args.command)
 }

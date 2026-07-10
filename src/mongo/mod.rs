@@ -57,6 +57,6 @@ pub enum MongoResetTarget {
     Db { name: String },
 }
 
-pub fn run(args: &MongoArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run(args: &MongoArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops mongo: not implemented ({:?})", args.command)
 }

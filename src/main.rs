@@ -22,16 +22,22 @@ async fn main() -> ExitCode {
         .expect("install rustls ring crypto provider");
 
     let cli = Cli::parse();
-    let ctx = Ctx::from(&cli);
+    let ctx = match Ctx::build(&cli) {
+        Ok(ctx) => ctx,
+        Err(err) => {
+            eprintln!("error: {err:#}");
+            return ExitCode::from(frame::exit::unix::ARGUMENT_ERROR);
+        }
+    };
 
     let result = match &cli.command {
-        Commands::Os(args) => os::run(args, &ctx),
-        Commands::Mongo(args) => mongo::run(args, &ctx),
-        Commands::Pg(args) => pg::run(args, &ctx),
-        Commands::Redis(args) => redis::run(args, &ctx),
-        Commands::Http(args) => net::run_http(args, &ctx),
-        Commands::Tcp(args) => net::run_tcp(args, &ctx),
-        Commands::Sys(args) => sys::run(args, &ctx),
+        Commands::Os(args) => os::run(args, &ctx).await,
+        Commands::Mongo(args) => mongo::run(args, &ctx).await,
+        Commands::Pg(args) => pg::run(args, &ctx).await,
+        Commands::Redis(args) => redis::run(args, &ctx).await,
+        Commands::Http(args) => net::run_http(args, &ctx).await,
+        Commands::Tcp(args) => net::run_tcp(args, &ctx).await,
+        Commands::Sys(args) => sys::run(args, &ctx).await,
     };
 
     match result {

@@ -54,6 +54,6 @@ pub enum OsResetTarget {
     Index { name: String },
 }
 
-pub fn run(args: &OsArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run(args: &OsArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops os: not implemented ({:?})", args.command)
 }

@@ -14,6 +14,6 @@ pub enum SysCommand {
     Check,
 }
 
-pub fn run(args: &SysArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run(args: &SysArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops sys: not implemented ({:?})", args.command)
 }

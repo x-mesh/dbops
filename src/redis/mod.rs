@@ -22,6 +22,6 @@ pub enum RedisCommand {
     },
 }
 
-pub fn run(args: &RedisArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run(args: &RedisArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops redis: not implemented ({:?})", args.command)
 }

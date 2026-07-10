@@ -73,6 +73,6 @@ pub enum PgResetTarget {
     Db { name: String },
 }
 
-pub fn run(args: &PgArgs, _ctx: &Ctx) -> Result<ExitCode> {
+pub async fn run(args: &PgArgs, _ctx: &Ctx) -> Result<ExitCode> {
     anyhow::bail!("dbops pg: not implemented ({:?})", args.command)
 }
