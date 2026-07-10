@@ -22,6 +22,13 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"]
 # See docs/build-spike.md for the full trace of how each crate was verified.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 
+# Declared directly (not just pulled in by rustls above) so `dbops update`
+# can SHA-256 a downloaded artifact against the release's SHA256SUMS. ring is
+# already compiled into every build as rustls's crypto backend, so this costs
+# nothing a `sha2`/`sha256` crate wouldn't add from scratch. Keep the version
+# in step with whatever rustls resolves, so only one copy is ever built.
+ring = "0.17"
+
 # default-features off + "rustls-no-provider": pulls in rustls TLS support
 # (hyper-rustls/tokio-rustls) without reqwest's "rustls" feature forcing the
 # aws-lc-rs backend. Requires installing a default CryptoProvider once at

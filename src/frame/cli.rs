@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::{mongo, net, os, pg, redis, sys};
+use crate::{mongo, net, os, pg, redis, sys, update};
 
 #[derive(Parser, Debug)]
 #[command(name = "dbops", version, about = "SRE database operations toolkit", long_about = None)]
@@ -77,4 +77,7 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
+    /// Replace this binary in place with the newest published release
+    /// (honors the global `--dry-run` and `--json`)
+    Update(update::UpdateArgs),
 }

@@ -605,6 +605,7 @@ dependencies = [
  "opensearch",
  "redis",
  "reqwest",
+ "ring",
  "rustls",
  "serde",
  "serde_json",

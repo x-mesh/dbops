@@ -9,6 +9,7 @@ mod os;
 mod pg;
 mod redis;
 mod sys;
+mod update;
 
 use frame::{Cli, Commands, Ctx};
 
@@ -32,6 +33,19 @@ async fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
 
+    // Also handled before Ctx::build(), for the same reason plus one of its
+    // own: a self-update touches no database, and must keep working when the
+    // config file is the thing that's broken.
+    if let Commands::Update(args) = &cli.command {
+        return match update::run(args, &cli).await {
+            Ok(code) => code,
+            Err(err) => {
+                eprintln!("error: {err:#}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+
     let ctx = match Ctx::build(&cli) {
         Ok(ctx) => ctx,
         Err(err) => {
@@ -48,7 +62,9 @@ async fn main() -> ExitCode {
         Commands::Http(args) => net::run_http(args, &ctx).await,
         Commands::Tcp(args) => net::run_tcp(args, &ctx).await,
         Commands::Sys(args) => sys::run(args, &ctx).await,
-        Commands::Completion { .. } => unreachable!("handled before Ctx::build above"),
+        Commands::Completion { .. } | Commands::Update(_) => {
+            unreachable!("handled before Ctx::build above")
+        }
     };
 
     match result {
