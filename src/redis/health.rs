@@ -101,7 +101,11 @@ fn unknown(summary: String) -> CheckResult {
 
 /// Pure: response time (ms) + configured thresholds -> nagios status.
 /// `>=` at each boundary, matching the check_postgres/nagios convention.
-fn evaluate_thresholds(elapsed_ms: f64, warning: Option<f64>, critical: Option<f64>) -> CheckStatus {
+fn evaluate_thresholds(
+    elapsed_ms: f64,
+    warning: Option<f64>,
+    critical: Option<f64>,
+) -> CheckStatus {
     if let Some(crit) = critical {
         if elapsed_ms >= crit {
             return CheckStatus::Critical;

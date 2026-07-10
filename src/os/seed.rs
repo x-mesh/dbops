@@ -21,7 +21,7 @@ use serde_json::Value;
 
 use crate::frame::exit;
 use crate::frame::guard::{self, GuardDecision};
-use crate::frame::plan::{ActionKind, PlannedAction, PlanPreview};
+use crate::frame::plan::{ActionKind, PlanPreview, PlannedAction};
 use crate::frame::{Ctx, ExitCode};
 
 /// Documents per `_bulk` request. Bounds peak memory (a chunk of parsed
@@ -34,7 +34,8 @@ pub async fn run_seed(
     confirm_name: Option<&str>,
     ctx: &Ctx,
 ) -> anyhow::Result<ExitCode> {
-    let os_client = match super::client::connect(&ctx.profile.opensearch, ctx.timeout, ctx.insecure) {
+    let os_client = match super::client::connect(&ctx.profile.opensearch, ctx.timeout, ctx.insecure)
+    {
         Ok(os_client) => os_client,
         Err(err) => {
             eprintln!("error: failed to connect to opensearch: {err:#}");
@@ -131,8 +132,7 @@ async fn stream_seed(
 
     for (i, line_result) in reader.lines().enumerate() {
         let line_no = i as u64 + 1;
-        let line =
-            line_result.with_context(|| format!("failed to read line {line_no}"))?;
+        let line = line_result.with_context(|| format!("failed to read line {line_no}"))?;
         if line.trim().is_empty() {
             continue;
         }
@@ -217,10 +217,7 @@ async fn send_chunk(
 /// each failed item carries an `"error"` object under its action key
 /// (`"index"`, since every op here is an index action).
 fn count_item_failures(body: &Value) -> u64 {
-    let has_errors = body
-        .get("errors")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
+    let has_errors = body.get("errors").and_then(Value::as_bool).unwrap_or(false);
     if !has_errors {
         return 0;
     }

@@ -7,7 +7,7 @@ use tokio_postgres::Client;
 
 use crate::frame::exit::unix;
 use crate::frame::guard::{self, GuardDecision};
-use crate::frame::plan::{ActionKind, PlannedAction, PlanPreview};
+use crate::frame::plan::{ActionKind, PlanPreview, PlannedAction};
 use crate::frame::result::StatReport;
 use crate::frame::{output, Ctx, ExitCode};
 use crate::pg::{client, quote_ident, validate_identifier};
@@ -44,7 +44,10 @@ pub async fn run_list(ctx: &Ctx) -> Result<ExitCode> {
         }
     };
 
-    println!("{}", output::render_stat(&build_list_report(&rows), ctx.json));
+    println!(
+        "{}",
+        output::render_stat(&build_list_report(&rows), ctx.json)
+    );
     Ok(ExitCode::from(unix::SUCCESS))
 }
 
@@ -149,7 +152,11 @@ pub async fn run_create(
     let login_word = if login { "LOGIN" } else { "NOLOGIN" };
     let detail = format!(
         "{login_word}, {}{}",
-        if password.is_some() { "password from env" } else { "no password" },
+        if password.is_some() {
+            "password from env"
+        } else {
+            "no password"
+        },
         if already_exists {
             " -- already exists, --if-not-exists makes this a no-op"
         } else {
@@ -235,15 +242,25 @@ pub async fn run_grant(
         }
     };
 
-    let already_member = role_membership(&pg_client, name, role).await.unwrap_or(false);
+    let already_member = role_membership(&pg_client, name, role)
+        .await
+        .unwrap_or(false);
     let detail = match db {
         Some(db_name) => format!(
             "GRANT {role} TO {name}, plus ALL PRIVILEGES ON DATABASE {db_name} TO {name}{}",
-            if already_member { " (role membership already present)" } else { "" }
+            if already_member {
+                " (role membership already present)"
+            } else {
+                ""
+            }
         ),
         None => format!(
             "GRANT {role} TO {name}{}",
-            if already_member { " (already a member)" } else { "" }
+            if already_member {
+                " (already a member)"
+            } else {
+                ""
+            }
         ),
     };
 
@@ -276,7 +293,9 @@ pub async fn run_grant(
     if let Some(db_name) = db {
         let db_q = quote_ident(db_name);
         if let Err(err) = pg_client
-            .simple_query(&format!("GRANT ALL PRIVILEGES ON DATABASE {db_q} TO {name_q};"))
+            .simple_query(&format!(
+                "GRANT ALL PRIVILEGES ON DATABASE {db_q} TO {name_q};"
+            ))
             .await
         {
             eprintln!(
@@ -288,10 +307,16 @@ pub async fn run_grant(
 
     // Verify against real server state rather than trusting the statements
     // above merely not having errored.
-    let member_now = role_membership(&pg_client, name, role).await.unwrap_or(false);
+    let member_now = role_membership(&pg_client, name, role)
+        .await
+        .unwrap_or(false);
     println!(
         "granted {role} to {name} -- membership confirmed: {}",
-        if member_now { "yes" } else { "no (verification query found no membership)" }
+        if member_now {
+            "yes"
+        } else {
+            "no (verification query found no membership)"
+        }
     );
 
     if let Some(db_name) = db {
@@ -300,7 +325,11 @@ pub async fn run_grant(
             .unwrap_or(false);
         println!(
             "database privilege on {db_name} confirmed: {}",
-            if has_connect { "yes (CONNECT)" } else { "no (verification query found no privilege)" }
+            if has_connect {
+                "yes (CONNECT)"
+            } else {
+                "no (verification query found no privilege)"
+            }
         );
     }
 
@@ -320,7 +349,8 @@ async fn role_membership(pg_client: &Client, member: &str, role: &str) -> Result
         )
         .await
         .context("pg_auth_members membership check failed")?;
-    row.try_get(0).context("unexpected membership check row shape")
+    row.try_get(0)
+        .context("unexpected membership check row shape")
 }
 
 async fn has_database_privilege(
@@ -336,7 +366,8 @@ async fn has_database_privilege(
         )
         .await
         .context("has_database_privilege check failed")?;
-    row.try_get(0).context("unexpected has_database_privilege row shape")
+    row.try_get(0)
+        .context("unexpected has_database_privilege row shape")
 }
 
 #[cfg(test)]

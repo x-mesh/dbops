@@ -18,7 +18,7 @@ use serde_json::Value;
 
 use crate::frame::exit;
 use crate::frame::guard::{self, GuardDecision};
-use crate::frame::plan::{ActionKind, PlannedAction, PlanPreview};
+use crate::frame::plan::{ActionKind, PlanPreview, PlannedAction};
 use crate::frame::{Ctx, ExitCode};
 
 use super::OsInitTarget;
@@ -31,7 +31,8 @@ pub async fn run_init(target: &OsInitTarget, ctx: &Ctx) -> Result<ExitCode> {
         confirm_name,
     } = target;
 
-    let os_client = match super::client::connect(&ctx.profile.opensearch, ctx.timeout, ctx.insecure) {
+    let os_client = match super::client::connect(&ctx.profile.opensearch, ctx.timeout, ctx.insecure)
+    {
         Ok(os_client) => os_client,
         Err(err) => {
             eprintln!("error: failed to connect to opensearch: {err:#}");
@@ -99,7 +100,11 @@ fn read_mapping_file(path: &Path) -> Result<Value> {
 }
 
 /// `true` if `name` already exists. Shared with [`super::run_reset`].
-pub(super) async fn index_exists(client: &OpenSearch, timeout: Duration, name: &str) -> Result<bool> {
+pub(super) async fn index_exists(
+    client: &OpenSearch,
+    timeout: Duration,
+    name: &str,
+) -> Result<bool> {
     let names = [name];
     let indices = client.indices();
     let fut = indices.exists(IndicesExistsParts::Index(&names)).send();
@@ -188,7 +193,11 @@ mod tests {
                 .unwrap()
                 .as_nanos()
         ));
-        fs::write(&path, r#"{"mappings":{"properties":{"f":{"type":"text"}}}}"#).unwrap();
+        fs::write(
+            &path,
+            r#"{"mappings":{"properties":{"f":{"type":"text"}}}}"#,
+        )
+        .unwrap();
         let body = read_mapping_file(&path).unwrap();
         assert_eq!(body["mappings"]["properties"]["f"]["type"], "text");
         fs::remove_file(path).ok();

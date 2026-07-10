@@ -26,8 +26,7 @@ const MIN_SUPPORTED_MAJOR_VERSION: u32 = 13;
 /// infallible.
 pub fn parse_args(args: &HealthArgs) -> Result<(Option<Duration>, Option<Duration>)> {
     let warning = parse_threshold(args.warning.as_deref()).context("invalid --warning value")?;
-    let critical =
-        parse_threshold(args.critical.as_deref()).context("invalid --critical value")?;
+    let critical = parse_threshold(args.critical.as_deref()).context("invalid --critical value")?;
     Ok((warning, critical))
 }
 
@@ -304,10 +303,7 @@ mod tests {
 
     #[test]
     fn parse_threshold_accepts_zero() {
-        assert_eq!(
-            parse_threshold(Some("0s")).unwrap(),
-            Some(Duration::ZERO)
-        );
+        assert_eq!(parse_threshold(Some("0s")).unwrap(), Some(Duration::ZERO));
         assert_eq!(parse_threshold(Some("0")).unwrap(), Some(Duration::ZERO));
     }
 

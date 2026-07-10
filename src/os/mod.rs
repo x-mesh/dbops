@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use crate::frame::guard::{self, GuardDecision};
 use crate::frame::output::{render_check, render_stat};
-use crate::frame::plan::{ActionKind, PlannedAction, PlanPreview};
+use crate::frame::plan::{ActionKind, PlanPreview, PlannedAction};
 use crate::frame::result::{CheckResult, CheckStatus};
 use crate::frame::{exit, Ctx, ExitCode, HealthArgs};
 

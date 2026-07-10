@@ -12,7 +12,7 @@ use tokio_postgres::Client;
 use crate::frame::config::PostgresProfile;
 use crate::frame::exit::unix;
 use crate::frame::guard::{self, GuardDecision};
-use crate::frame::plan::{ActionKind, PlannedAction, PlanPreview};
+use crate::frame::plan::{ActionKind, PlanPreview, PlannedAction};
 use crate::frame::{Ctx, ExitCode};
 use crate::pg::{client, quote_ident, validate_identifier};
 
@@ -49,7 +49,9 @@ pub async fn run_schema(
         }
     }
 
-    let target = db.map(str::to_string).unwrap_or_else(|| file_target_label(file));
+    let target = db
+        .map(str::to_string)
+        .unwrap_or_else(|| file_target_label(file));
 
     let profile = profile_for_db(ctx, db);
     let pg_client = match client::connect(&profile, ctx.timeout, ctx.insecure).await {
@@ -72,7 +74,10 @@ pub async fn run_schema(
         "wrapped in a single transaction"
     };
     let target_note = match table_count {
-        Some(n) => format!("target already has {n} table{}", if n == 1 { "" } else { "s" }),
+        Some(n) => format!(
+            "target already has {n} table{}",
+            if n == 1 { "" } else { "s" }
+        ),
         None => "target table count unavailable".to_string(),
     };
     let detail = format!(
@@ -136,7 +141,10 @@ async fn apply_transactional(pg_client: &Client, statements: &[String]) -> Resul
 /// INDEX CONCURRENTLY`): run each statement as its own simple query. A
 /// failure is reported by 1-based statement number, and everything before it
 /// stays applied -- there is no transaction to roll back.
-async fn apply_statement_by_statement(pg_client: &Client, statements: &[String]) -> Result<ExitCode> {
+async fn apply_statement_by_statement(
+    pg_client: &Client,
+    statements: &[String],
+) -> Result<ExitCode> {
     for (idx, stmt) in statements.iter().enumerate() {
         if let Err(err) = pg_client.simple_query(stmt).await {
             eprintln!("error: {}번째 문장에서 실패: {err:#}", idx + 1);
@@ -335,10 +343,11 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
     // Best-effort: table count needs its own connection straight into the
     // target db (a single postgres session can't introspect another
     // database's information_schema).
-    let table_count = match client::connect(&profile_for_db(ctx, Some(name)), ctx.timeout, ctx.insecure).await {
-        Ok(target_client) => table_count_via(&target_client).await,
-        Err(_) => None,
-    };
+    let table_count =
+        match client::connect(&profile_for_db(ctx, Some(name)), ctx.timeout, ctx.insecure).await {
+            Ok(target_client) => table_count_via(&target_client).await,
+            Err(_) => None,
+        };
     let table_note = match table_count {
         Some(n) => format!("{n} table{}", if n == 1 { "" } else { "s" }),
         None => "table count unavailable".to_string(),
@@ -416,7 +425,10 @@ async fn recreate_with_owner(pg_client: &Client, name_q: &str, owner: &str) -> R
 
 /// `(pg_size_pretty(...), owner rolname)` for `name`, or `None` if no such
 /// database exists.
-async fn database_size_and_owner(pg_client: &Client, name: &str) -> Result<Option<(String, String)>> {
+async fn database_size_and_owner(
+    pg_client: &Client,
+    name: &str,
+) -> Result<Option<(String, String)>> {
     let row = pg_client
         .query_opt(
             "SELECT pg_size_pretty(pg_database_size(d.oid)), pg_get_userbyid(d.datdba) \
@@ -453,7 +465,10 @@ mod tests {
     #[test]
     fn splits_simple_statements() {
         let stmts = split_statements("CREATE TABLE a (id int); CREATE TABLE b (id int);");
-        assert_eq!(stmts, vec!["CREATE TABLE a (id int)", "CREATE TABLE b (id int)"]);
+        assert_eq!(
+            stmts,
+            vec!["CREATE TABLE a (id int)", "CREATE TABLE b (id int)"]
+        );
     }
 
     #[test]
@@ -471,7 +486,8 @@ mod tests {
 
     #[test]
     fn ignores_semicolon_inside_dollar_quoted_body() {
-        let sql = "CREATE FUNCTION f() RETURNS void AS $$ BEGIN SELECT 1; END; $$ LANGUAGE plpgsql;";
+        let sql =
+            "CREATE FUNCTION f() RETURNS void AS $$ BEGIN SELECT 1; END; $$ LANGUAGE plpgsql;";
         let stmts = split_statements(sql);
         assert_eq!(stmts.len(), 1);
         assert!(stmts[0].contains("SELECT 1; END;"));
@@ -501,8 +517,12 @@ mod tests {
 
     #[test]
     fn detects_concurrently_case_insensitively() {
-        assert!(contains_concurrent_ddl("create index concurrently idx on t(a)"));
-        assert!(contains_concurrent_ddl("CREATE INDEX CONCURRENTLY idx ON t(a)"));
+        assert!(contains_concurrent_ddl(
+            "create index concurrently idx on t(a)"
+        ));
+        assert!(contains_concurrent_ddl(
+            "CREATE INDEX CONCURRENTLY idx ON t(a)"
+        ));
         assert!(!contains_concurrent_ddl("CREATE INDEX idx ON t(a)"));
         // must not false-positive on a substring match
         assert!(!contains_concurrent_ddl("-- run concurrently_ish later"));
@@ -510,6 +530,9 @@ mod tests {
 
     #[test]
     fn file_target_label_uses_basename() {
-        assert_eq!(file_target_label(Path::new("/tmp/dir/schema.sql")), "schema.sql");
+        assert_eq!(
+            file_target_label(Path::new("/tmp/dir/schema.sql")),
+            "schema.sql"
+        );
     }
 }
