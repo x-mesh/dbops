@@ -1,0 +1,5 @@
+# Passed to every `dbops --config` invocation in tests/integration.sh so it
+# never picks up a developer's real ~/.dbops.toml (different profiles,
+# secrets, or a "default" profile name mismatch would otherwise make
+# profile resolution nondeterministic). No [profiles.*] table -- every
+# connection field comes from DBOPS_* env vars the harness sets per call.

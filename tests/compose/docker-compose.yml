@@ -1,0 +1,132 @@
+# dbops integration test fixture.
+#
+# Brought up/down as a unit by tests/integration.sh (project name
+# "dbops-test", ports in the 25xxx-29xxx range to stay clear of other
+# agents/services on the same host). Not meant to be started by hand for
+# anything other than debugging a failing integration.sh run --
+# tests/integration.sh always seeds required state (pg replication write,
+# mongo replset initiation) after `up`.
+#
+# MongoDB note: the replica set is initiated with the *internal* compose
+# hostnames (mongo1:27017 etc.) so inter-member replication traffic works.
+# Host-side access (tests/integration.sh, run from the bare-metal cargo
+# binary) instead connects straight to mongo1's published port with
+# `directConnection=true`, which skips topology-driven redirection to those
+# internal hostnames entirely -- see tests/README.md for why.
+
+name: dbops-test
+
+services:
+  # bitnami/postgresql's free tags were retired to "latest"-only in 2025
+  # (Bitnami Secure Images migration); bitnamilegacy/postgresql is the
+  # still-public, frozen mirror that keeps real version tags.
+  pg-primary:
+    image: bitnamilegacy/postgresql:17.6.0
+    environment:
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_REPLICATION_USER: repl_user
+      POSTGRESQL_REPLICATION_PASSWORD: repl_password
+      POSTGRESQL_USERNAME: postgres
+      POSTGRESQL_PASSWORD: dbops_test_pw
+      POSTGRESQL_DATABASE: dbops_test
+    ports:
+      - "25432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dbops_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  pg-replica:
+    image: bitnamilegacy/postgresql:17.6.0
+    depends_on:
+      pg-primary:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_REPLICATION_USER: repl_user
+      POSTGRESQL_REPLICATION_PASSWORD: repl_password
+      POSTGRESQL_MASTER_HOST: pg-primary
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432
+      POSTGRESQL_PASSWORD: dbops_test_pw
+    ports:
+      - "25433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  mongo1:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27217:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  mongo2:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27218:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  mongo3:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27219:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  # One-shot: calls rs.initiate() once all three members are reachable.
+  # Idempotent (checks rs.status() first) in case something re-runs it
+  # against an already-initiated set.
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    volumes:
+      - ./mongo-init/init-replset.js:/init/init-replset.js:ro
+    command: ["mongosh", "--host", "mongo1:27017", "--file", "/init/init-replset.js"]
+    restart: "no"
+
+  opensearch:
+    image: opensearchproject/opensearch:2
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "29200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "26379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
