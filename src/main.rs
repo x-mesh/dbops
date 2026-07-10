@@ -12,7 +12,15 @@ mod sys;
 
 use frame::{Cli, Commands, Ctx};
 
-fn main() -> ExitCode {
+#[tokio::main]
+async fn main() -> ExitCode {
+    // Every TLS-capable dependency is feature-gated to the ring crypto
+    // backend (see Cargo.toml); rustls needs one process-wide default
+    // provider installed before any TLS connection is made.
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("install rustls ring crypto provider");
+
     let cli = Cli::parse();
     let ctx = Ctx::from(&cli);
 
