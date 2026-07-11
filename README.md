@@ -120,6 +120,8 @@ dbops update --force         # 같은 버전이어도 다시 받아 덮어씀
 
 SHA256 대조는 전송 중 손상/절단을 잡는 용도다. `SHA256SUMS`는 바이너리와 같은 릴리스에 들어 있으니 서명이 아니며, 릴리스의 진위는 api.github.com으로의 HTTPS가 담보한다.
 
+`update`와 `http check`는 신뢰 루트를 바이너리에 내장(Mozilla CA 세트 + 호스트의 native 루트 union)해서 쓴다. 그래서 `ca-certificates` 패키지가 없는 최소 이미지(distroless, slim Debian)에서도 TLS 검증이 그대로 동작하고, 동시에 호스트에 설치된 사내 CA(예: 인트라넷 엔드포인트를 `http check`할 때)도 인정한다. 자세한 배경은 `src/frame/tls.rs` 참고.
+
 ## 배포 (빌드 산출물 직접 다루기)
 
 빌드 산출물은 CI가 자동으로 만들거나(태그 push 시 `.github/workflows/release.yml`), 로컬에서 직접 만들 수 있다 (`scripts/release-build.sh` 참고).

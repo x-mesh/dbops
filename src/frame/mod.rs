@@ -8,6 +8,7 @@ pub mod output;
 pub mod plan;
 pub mod result;
 pub mod secret;
+pub mod tls;
 
 pub use cli::{Cli, Commands};
 pub use ctx::{Ctx, ExitCode};

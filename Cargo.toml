@@ -29,6 +29,16 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # in step with whatever rustls resolves, so only one copy is ever built.
 ring = "0.17"
 
+# Trust roots for the update/http-check HTTPS clients (see frame/tls.rs).
+# reqwest's rustls-no-provider path verifies against the system store and
+# hard-fails when the image ships none (distroless, slim Debian); these give
+# the clients a compiled-in Mozilla set unioned with the host's native roots
+# so verification works everywhere without a `ca-certificates` package.
+# Already in the graph transitively (webpki-roots via tokio-postgres-rustls),
+# so declaring them direct doesn't add a build.
+webpki-roots = "1.0"
+rustls-native-certs = "0.8"
+
 # default-features off + "rustls-no-provider": pulls in rustls TLS support
 # (hyper-rustls/tokio-rustls) without reqwest's "rustls" feature forcing the
 # aws-lc-rs backend. Requires installing a default CryptoProvider once at

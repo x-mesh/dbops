@@ -84,8 +84,15 @@ impl Client {
     /// then replaces this process would turn a convenience into a way to
     /// get a hostile binary installed.
     pub fn new(api_timeout: Duration) -> Result<Self> {
+        // Compiled-in trust roots (see frame::tls): the whole point of
+        // `dbops update` is running on a stripped server image, and reqwest's
+        // default verifier would fail to build a client there for want of a
+        // system CA bundle. Built once and shared by both clients below.
+        let tls = crate::frame::tls::bundled_root_config()?;
         let build = |timeout: Option<Duration>| -> Result<reqwest::Client> {
-            let mut builder = reqwest::Client::builder().connect_timeout(CONNECT_TIMEOUT);
+            let mut builder = reqwest::Client::builder()
+                .connect_timeout(CONNECT_TIMEOUT)
+                .use_preconfigured_tls(tls.clone());
             if let Some(timeout) = timeout {
                 builder = builder.timeout(timeout);
             }

@@ -41,13 +41,22 @@ pub async fn check(
         .transpose()
         .context("--critical")?;
 
-    let client = reqwest::Client::builder()
+    let mut builder = reqwest::Client::builder()
         .timeout(ctx.timeout)
         .redirect(Policy::limited(MAX_REDIRECTS))
-        .danger_accept_invalid_certs(ctx.insecure)
-        .tls_info(true)
-        .build()
-        .context("build http client")?;
+        .tls_info(true);
+    // Two separate paths, not `danger_accept_invalid_certs(ctx.insecure)`:
+    // that flag is only honored on reqwest's own TLS config, whose default
+    // verifier reads the system trust store and fails to build on an image
+    // with no CA bundle. The secure path swaps in compiled-in roots (see
+    // frame::tls) so verification works there; `--insecure` keeps reqwest's
+    // no-verify path, which touches no trust store and already builds fine.
+    builder = if ctx.insecure {
+        builder.danger_accept_invalid_certs(true)
+    } else {
+        builder.use_preconfigured_tls(crate::frame::tls::bundled_root_config()?)
+    };
+    let client = builder.build().context("build http client")?;
 
     let started = Instant::now();
     let send_result = client.get(url).send().await;
