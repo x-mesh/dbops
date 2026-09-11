@@ -2,6 +2,16 @@
 name = "dbops"
 version = "0.1.1"
 edition = "2021"
+description = "Dependency-free static binary that health-checks and initializes OpenSearch, MongoDB, PostgreSQL and Redis, with nagios-compatible exit codes"
+license = "MIT"
+repository = "https://github.com/x-mesh/dbops"
+readme = "README.md"
+keywords = ["cli", "sre", "monitoring", "nagios", "database"]
+categories = ["command-line-utilities", "database"]
+# The recorded demos are the bulk of the repository by size and none of it is
+# needed to build the crate: docs/media alone is ~700 KB of GIF, and the test
+# fixture only means anything next to a Docker daemon.
+exclude = ["docs/media/*", "docs/tape/*", "tests/compose/*", "dist/*"]
 
 [dependencies]
 anyhow = "1.0.103"

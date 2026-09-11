@@ -471,3 +471,7 @@ the same docker compose fixture the tests use, seeds it, and points a `demo`
 profile at it -- so a GIF cannot drift from what the tool actually prints.
 Re-render whenever output changes. Note that vhs 0.12.0 silently writes
 nothing; the script checks for it and points at 0.11.0.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
