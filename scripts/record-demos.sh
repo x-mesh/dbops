@@ -329,43 +329,9 @@ export HOME="$DEMO_HOME"
 export PATH="$REPO_ROOT/target/release:$PATH"
 export DBOPS_DEMO_PG_PASSWORD=dbops_test_pw
 
-# The install demo pulls from the GitHub release. While the repository is
-# private that needs a token, and it must never be typed on screen -- the
-# tape's hidden setup reads it from here.
-if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
-  GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
-  export GITHUB_TOKEN
-fi
-
-# install.sh itself reads GITHUB_TOKEN from the environment, but the curl
-# that fetches install.sh is on screen and must stay the public one-liner.
-# A .curlrc supplies the header for it instead. Once the repository is
-# public this whole block is dead weight: the same tape renders the same
-# frames without any of it.
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-  export CURL_HOME="$WORKDIR/curl"
-  mkdir -p "$CURL_HOME"
-  printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_TOKEN" > "$CURL_HOME/.curlrc"
-  chmod 600 "$CURL_HOME/.curlrc"
-  # install.sh adds an Authorization header of its own whenever it finds a
-  # token, and two of them is not twice as authorized -- the API answers
-  # 401. Clearing the environment is not enough because its last resort is
-  # to shell out to `gh auth token`, so the render also gets a `gh` that
-  # finds nothing. Both of these exist only to keep the private repo
-  # reachable without putting a header in frame; once the repo is public
-  # the tape renders the same output with none of it.
-  # `dbops update` is the binary's own HTTPS client, not curl, so it cannot
-  # read the .curlrc and does need a token in the environment. It just must
-  # not be there while install.sh runs. Park it under a name install.sh
-  # never looks at; install.tape moves it into GITHUB_TOKEN out of frame
-  # once the install step is done.
-  export DEMO_GH_TOKEN="$GITHUB_TOKEN"
-  unset GITHUB_TOKEN GH_TOKEN DBOPS_GITHUB_TOKEN
-  mkdir -p "$WORKDIR/shim"
-  printf '#!/bin/sh\nexit 1\n' > "$WORKDIR/shim/gh"
-  chmod +x "$WORKDIR/shim/gh"
-  export PATH="$WORKDIR/shim:$PATH"
-fi
+# install.tape pulls from the public GitHub release, so nothing here has to
+# authenticate. A GITHUB_TOKEN already in the environment is passed straight
+# through and only raises the unauthenticated API's 60/hour ceiling.
 
 if [ "$SEED_ONLY" -eq 1 ]; then
   log "--seed-only set: fixture seeded, demo profile written"

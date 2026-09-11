@@ -2,12 +2,6 @@
 # over afterwards.
 #
 # Render: scripts/record-demos.sh --only install
-#
-# The install command shown is the public one-liner, verbatim. While the
-# repository is still private that first fetch needs an Authorization
-# header, so record-demos.sh puts one in a CURL_HOME/.curlrc instead of on
-# screen -- the header stops being needed the moment the repo is public,
-# and re-rendering then produces the same frames without it.
 
 Output docs/media/install.gif
 
@@ -43,16 +37,11 @@ Enter
 Wait+Screen /dbops 0/
 Sleep 1800ms
 
-# Not rendered: hand the binary the token it needs to reach a release in a
-# private repository. install.sh had to run without it (see the header note
-# above); this is the same token, moved into place now that it is done.
-# Nothing here survives the repository going public.
+# Not rendered: give the update step a screen of its own. Hide stops the
+# capture but leaves whatever is on screen there, so the clear is what
+# actually separates the two halves of the demo.
 Hide
 Set TypingSpeed 1ms
-Type 'export GITHUB_TOKEN="$DEMO_GH_TOKEN"'
-Enter
-# Hide only stops the capture; whatever was typed is still on screen when
-# Show resumes. Clearing is what actually keeps it out of the GIF.
 Type "clear"
 Enter
 Set TypingSpeed 55ms
