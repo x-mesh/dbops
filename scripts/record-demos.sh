@@ -132,7 +132,7 @@ log "docker compose up (project: $PROJECT_NAME)"
 # service. tests/integration.sh polls for readiness for the same reason.
 compose up -d
 
-# wait_for <description> <attempts> <command...> -- retries at 2s intervals.
+# wait_for <description> <attempts> <command...>: retries at 2s intervals.
 wait_for() {
   local what="$1" attempts="$2"; shift 2
   for _ in $(seq 1 "$attempts"); do
@@ -208,7 +208,7 @@ log "seeding opensearch (indices with documents, so the listings have rows)"
 # OpenSearch ships the query-insights plugin enabled, which quietly creates
 # a top_queries-<date>-<id> index of its own. It would show up in the
 # `os indices` demo as a row nobody asked for, under a name that changes
-# every run -- so the same tape would render a different table each time.
+# every run, so the same tape would render a different table each time.
 os_curl "/_cluster/settings" -X PUT -H 'Content-Type: application/json' -d '{
   "persistent": {
     "search.insights.top_queries.latency.enabled": false,
@@ -253,7 +253,7 @@ compose exec -T redis redis-cli -n 1 --no-raw eval "
 
 # slowlog is empty on a healthy idle instance, so `redis slowlog` would
 # render an empty table. Lower the threshold to catch everything, run a few
-# deliberately expensive commands, then put the threshold back -- the
+# deliberately expensive commands, then put the threshold back: the
 # entries survive the reset.
 compose exec -T redis redis-cli CONFIG SET slowlog-log-slower-than 0 >/dev/null
 compose exec -T redis redis-cli KEYS 'session:*' >/dev/null
@@ -280,7 +280,7 @@ compose exec -T mongo1 mongosh --quiet --eval '
 # The tapes run bare `dbops pg health`, with no --config and no DBOPS_* in
 # frame: HOME points here, so the binary finds this file exactly the way a
 # real install finds a real one. Passwords go through env: for the same
-# reason the README tells everyone else to -- a demo that models bad
+# reason the README tells everyone else to: a demo that models bad
 # practice teaches bad practice.
 
 cat > "$DEMO_HOME/.dbops.toml" <<TOML
@@ -363,5 +363,5 @@ for tape in "${tapes[@]}"; do
   vhs "$tape"
 done
 
-log "done -- rendered into $MEDIA_DIR"
+log "done: rendered into $MEDIA_DIR"
 ls -lh "$MEDIA_DIR" >&2

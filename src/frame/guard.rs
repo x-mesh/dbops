@@ -6,7 +6,7 @@
 //! own `apply()` when the result is [`GuardDecision::Proceed`]. A
 //! [`GuardDecision::Declined`] must never be followed by any side effect.
 
-// Not called from any domain module yet -- that lands with the M3
+// Not called from any domain module yet. That lands with the M3
 // destructive-command tasks. Until then this is only reachable from this
 // module's own tests. Same reasoning as `plan`'s `#![allow(dead_code)]`.
 #![allow(dead_code)]
@@ -63,7 +63,7 @@ pub fn authorize(
     let mut confirm_name = confirm_name.map(str::to_string);
     // Local override, not a write-back to `ctx`: once the operator answers
     // the interactive "really do this?" prompt, later loop iterations must
-    // stop re-asking it -- exactly what a real `--yes` flag would already
+    // stop re-asking it, exactly what a real `--yes` flag would already
     // have skipped.
     let mut yes = ctx.yes;
 
@@ -287,7 +287,7 @@ mod tests {
         assert_eq!(decision, GuardDecision::DryRun);
 
         // Model the call-site contract (apply() only runs on `Proceed`)
-        // instead of trusting the return value blindly -- this is what
+        // instead of trusting the return value blindly. This is what
         // actually proves dry-run never reaches apply.
         let mut applied = false;
         if decision == GuardDecision::Proceed {

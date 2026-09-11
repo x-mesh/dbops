@@ -158,7 +158,7 @@ mod tests {
     }
 
     /// The `SLOWLOG GET` reply's 3rd field is the command's execution time
-    /// in *microseconds* (Redis docs), not milliseconds -- the column name
+    /// in *microseconds* (Redis docs), not milliseconds: the column name
     /// must say so explicitly, in both the table header and `--json`
     /// (`StatReport.columns` is the single source for both), so a reader
     /// never has to guess the unit or assume it matches `pg`/`redis health`'s

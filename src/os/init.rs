@@ -1,10 +1,10 @@
-//! `dbops os init index` -- idempotent index creation from a mapping file,
+//! `dbops os init index`: idempotent index creation from a mapping file,
 //! plus the shared `exists`/`create`/`get-mapping` helpers `super::run_reset`
 //! reuses to recreate an index with its previous mapping.
 //!
 //! The mapping file's JSON is passed through as-is as the `PUT /<name>`
 //! request body (typically `{"mappings": {...}}`, but a caller can also
-//! include `"settings"`/`"aliases"` -- this module does not interpret it).
+//! include `"settings"`/`"aliases"`; this module does not interpret it).
 
 use std::fs;
 use std::path::Path;
@@ -141,7 +141,7 @@ pub(super) async fn create_index(
 /// Best-effort mapping fetch for `super::apply_reset`'s "preserve the
 /// mapping across drop+create" behavior. Returns `{"mappings": {...}}`
 /// suitable for [`create_index`]'s body, or `None` if the index has no
-/// mapping, or the fetch itself fails -- reset falls back to an empty index
+/// mapping, or the fetch itself fails. Reset falls back to an empty index
 /// rather than aborting on a mapping-preservation hiccup.
 pub(super) async fn fetch_mapping_for_recreate(
     client: &OpenSearch,

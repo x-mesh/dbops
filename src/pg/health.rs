@@ -1,6 +1,6 @@
 //! `dbops pg health`: connect, tell primary from standby, and report replica
 //! lag against `--warning`/`--critical` thresholds. Never returns a bare
-//! `Result` -- connect failures and timeouts become an `Unknown` result
+//! `Result`: connect failures and timeouts become an `Unknown` result
 //! rather than an early `Err`, so the nagios line always prints and the exit
 //! code always comes from [`frame::exit::from_status`], even when postgres
 //! is unreachable.
@@ -22,7 +22,7 @@ const MIN_SUPPORTED_MAJOR_VERSION: u32 = 13;
 
 /// Parse `--warning`/`--critical` up front. A bad value is a usage error
 /// (exit 3, no nagios line), distinct from every other failure this check
-/// can hit -- callers must check this before calling [`health`], which stays
+/// can hit. Callers must check this before calling [`health`], which stays
 /// infallible.
 pub fn parse_args(args: &HealthArgs) -> Result<(Option<Duration>, Option<Duration>)> {
     let warning = parse_threshold(args.warning.as_deref()).context("invalid --warning value")?;
@@ -147,7 +147,7 @@ impl Replication {
     }
 }
 
-/// Delegates to the shared [`frame::health::parse_threshold`] -- unlike
+/// Delegates to the shared [`frame::health::parse_threshold`]. Unlike
 /// `frame::ctx::parse_timeout` (`--timeout`-only, forbids `0`), `0` is a
 /// valid lag threshold here. A bare number with no `ms`/`s`/`m` suffix is
 /// treated as a plain seconds count, matching this domain's lag semantics.
@@ -158,7 +158,7 @@ fn parse_threshold(raw: Option<&str>) -> Result<Option<Duration>> {
 
 /// No lag metric (single-instance primary with no replicas, or a standby
 /// that hasn't replayed anything yet) means there's nothing to compare
-/// against a threshold -- that's `Ok`, not "threshold trivially satisfied"
+/// against a threshold. That's `Ok`, not "threshold trivially satisfied"
 /// or "unknown".
 fn evaluate_status(
     lag_seconds: Option<f64>,
@@ -184,7 +184,7 @@ fn build_summary(replication: &Replication) -> String {
             lag_seconds: Some(lag),
             ..
         } => format!("primary, replica lag {lag:.1}s"),
-        // No standby row at all -- a genuinely lone primary.
+        // No standby row at all: a genuinely lone primary.
         Replication::Primary {
             connected_standbys: 0,
             ..
@@ -208,8 +208,8 @@ fn build_summary(replication: &Replication) -> String {
 ///
 /// The count and the lag answer two different questions. The count is `0`
 /// only when no standby is attached. The lag is `NULL` (reported as `None`,
-/// never a fabricated `0`) whenever no attached standby has un-replayed WAL
-/// -- which includes the common healthy case of a caught-up replica on a
+/// never a fabricated `0`) whenever no attached standby has un-replayed WAL,
+/// which includes the common healthy case of a caught-up replica on a
 /// quiet cluster. Reading them together is what lets the summary tell "no
 /// replicas" apart from "replicas connected, nothing to replay".
 async fn primary_replication(pg_client: &Client) -> Result<(i64, Option<f64>)> {
@@ -244,7 +244,7 @@ async fn standby_lag_seconds(pg_client: &Client) -> Result<Option<f64>> {
         .context("unexpected pg_last_xact_replay_timestamp() row shape")
 }
 
-/// Informational only -- never fails the health check. A role without
+/// Informational only: never fails the health check. A role without
 /// `pg_monitor`/superuser can still get a lag/role result even if it can't
 /// see `pg_stat_activity` or `max_connections`.
 async fn connection_counts(pg_client: &Client) -> Option<(i64, i64)> {
@@ -264,7 +264,7 @@ async fn connection_counts(pg_client: &Client) -> Option<(i64, i64)> {
     Some((used, max))
 }
 
-/// Best-effort, stderr-only -- an old server is still worth checking, just
+/// Best-effort, stderr-only: an old server is still worth checking, just
 /// flagged. Never affects `CheckStatus`.
 async fn warn_if_unsupported_version(pg_client: &Client) {
     let Ok(row) = pg_client.query_one("SHOW server_version", &[]).await else {

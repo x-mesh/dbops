@@ -158,7 +158,7 @@ pub async fn run_create(
             "no password"
         },
         if already_exists {
-            " -- already exists, --if-not-exists makes this a no-op"
+            " (already exists; --if-not-exists makes this a no-op)"
         } else {
             ""
         },
@@ -187,7 +187,7 @@ pub async fn run_create(
     let name_q = quote_ident(name);
     let mut stmt = format!("CREATE ROLE {name_q} WITH {login_word}");
     if let Some(pw) = &password {
-        // A value position, not an identifier -- standard SQL string-literal
+        // A value position, not an identifier: standard SQL string-literal
         // escaping (doubling `'`) applies here, not quote_ident. Postgres
         // DDL has no bind-parameter slot for this (CREATE ROLE ... PASSWORD
         // takes a literal token in the grammar, not an expression), so this
@@ -311,7 +311,7 @@ pub async fn run_grant(
         .await
         .unwrap_or(false);
     println!(
-        "granted {role} to {name} -- membership confirmed: {}",
+        "granted {role} to {name}; membership confirmed: {}",
         if member_now {
             "yes"
         } else {

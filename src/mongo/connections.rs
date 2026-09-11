@@ -78,7 +78,7 @@ fn parse_connections(doc: &Document) -> Result<ConnectionStats> {
     })
 }
 
-/// Tolerates `Int32`, `Int64`, or `Double` wire representations -- which
+/// Tolerates `Int32`, `Int64`, or `Double` wire representations: which
 /// field type `serverStatus` uses for a given counter varies by MongoDB
 /// version.
 fn bson_i64(doc: &Document, key: &str) -> Option<i64> {

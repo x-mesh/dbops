@@ -16,7 +16,7 @@ pub struct HealthArgs {
 /// A parsed `--warning`/`--critical` value, before any domain decides what
 /// it means. `Duration` comes from a recognized time suffix (`ms`, `s`,
 /// `m`); `Count` comes from a bare number with no suffix and is left for the
-/// calling domain to interpret -- as seconds (`pg`/`mongo` replication lag),
+/// calling domain to interpret: as seconds (`pg`/`mongo` replication lag),
 /// milliseconds (`redis` response time), or a plain count (`os` unassigned
 /// shards).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -27,8 +27,9 @@ pub enum Threshold {
 
 impl Threshold {
     /// Interpret this threshold as seconds: a `Duration` measured directly,
-    /// or a bare `Count` treated as a plain number of seconds -- the legacy
-    /// `--warning 10` == "10 seconds" convention `pg`/`mongo` lag checks use.
+    /// or a bare `Count` treated as a plain number of seconds (the legacy
+    /// `--warning 10` == "10 seconds" convention `pg`/`mongo` lag checks
+    /// use).
     pub fn as_seconds(self) -> f64 {
         match self {
             Threshold::Duration(d) => d.as_secs_f64(),
@@ -37,9 +38,9 @@ impl Threshold {
     }
 
     /// Interpret this threshold as milliseconds: a `Duration` converted to
-    /// ms, or a bare `Count` treated as a plain number of milliseconds --
-    /// the legacy `--warning 50` == "50ms" convention `redis`'s
-    /// response-time check uses.
+    /// ms, or a bare `Count` treated as a plain number of milliseconds (the
+    /// legacy `--warning 50` == "50ms" convention `redis`'s response-time
+    /// check uses).
     pub fn as_millis_f64(self) -> f64 {
         match self {
             Threshold::Duration(d) => d.as_secs_f64() * 1_000.0,
@@ -48,7 +49,7 @@ impl Threshold {
     }
 
     /// Interpret this threshold as a plain count. Only a bare `Count` is
-    /// valid here -- a `Duration` (`"5s"`, `"500ms"`, ...) is a usage error
+    /// valid here. A `Duration` (`"5s"`, `"500ms"`, ...) is a usage error
     /// because the domain measures a count, not time.
     pub fn as_count(self) -> Result<f64> {
         match self {
@@ -62,12 +63,12 @@ impl Threshold {
 
 /// Parse a `--warning`/`--critical` threshold shared by every `health`
 /// subcommand. Unlike [`crate::frame::ctx::parse_timeout`] (which powers
-/// `--timeout` and forbids `0` -- a zero timeout is nonsensical) `0` is a
+/// `--timeout` and forbids `0`: a zero timeout is nonsensical) `0` is a
 /// perfectly ordinary threshold here, e.g. `--critical 0s` to alert on *any*
 /// replication lag at all. A recognized duration suffix (`ms`, `s`, `m`)
 /// parses as [`Threshold::Duration`]; a bare number with no suffix parses as
-/// [`Threshold::Count`], left for the caller to interpret. Anything else --
-/// garbage text, a negative number, an empty string -- is a usage error.
+/// [`Threshold::Count`], left for the caller to interpret. Anything else
+/// (garbage text, a negative number, an empty string) is a usage error.
 pub fn parse_threshold(raw: &str) -> Result<Threshold> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {

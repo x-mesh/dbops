@@ -181,7 +181,7 @@ mod tests {
     }
 
     /// An empty cluster's `--json` output must serialize `rows` as `[]`, not
-    /// `null` -- `StatReport.rows` is a plain `Vec`, not an `Option<Vec>`,
+    /// `null`: `StatReport.rows` is a plain `Vec`, not an `Option<Vec>`,
     /// so serde always writes an array here regardless of emptiness; this
     /// pins that contract down at the JSON-text level, not just the
     /// in-memory `Vec::is_empty()` check above. Verified live against a

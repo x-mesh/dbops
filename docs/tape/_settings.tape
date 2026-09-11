@@ -1,6 +1,6 @@
 # Render settings shared by every dbops demo.
 #
-# Individual tapes Source this file and then override Height only -- the
+# Individual tapes Source this file and then override Height only: the
 # width stays fixed so the GIFs line up with each other in the README, and
 # a demo that needs more room gets it vertically.
 

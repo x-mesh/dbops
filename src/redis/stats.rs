@@ -1,8 +1,8 @@
 //! `dbops redis stats`: used_memory, maxmemory, mem_fragmentation_ratio,
 //! evicted_keys.
 //!
-//! `evicted_keys` lives in `INFO`'s `# Stats` section, not `# Memory` --
-//! confirmed against a live `redis:7-alpine` server, `INFO memory` alone
+//! `evicted_keys` lives in `INFO`'s `# Stats` section, not `# Memory`.
+//! Confirmed against a live `redis:7-alpine` server, `INFO memory` alone
 //! never has it. Requesting the default (no-section) `INFO` reply instead
 //! covers both sections in one round trip.
 
@@ -60,7 +60,7 @@ mod tests {
     use super::*;
 
     // Mirrors real `INFO` (no section arg) shape: evicted_keys lives under
-    // `# Stats`, not `# Memory` -- the fixture must reflect that split so a
+    // `# Stats`, not `# Memory`: the fixture must reflect that split so a
     // regression back to `INFO memory`-only can't silently pass.
     const FIXTURE: &str = "\
 # Memory

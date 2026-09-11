@@ -24,7 +24,7 @@ async fn main() -> ExitCode {
 
     let cli = Cli::parse();
 
-    // Handled before Ctx::build() -- a completion script needs the static
+    // Handled before Ctx::build(): a completion script needs the static
     // Cli::command() definition only, never a resolved DB profile, so this
     // must not fail (or even attempt) config/env resolution.
     if let Commands::Completion { shell } = &cli.command {

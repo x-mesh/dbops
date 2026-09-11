@@ -28,7 +28,7 @@ const NO_REPLICA_SET_CONFIG: i32 = 76;
 pub async fn run(ctx: &Ctx, args: &HealthArgs) -> Result<ExitCode> {
     // A bad --warning/--critical value is a usage error, not a connectivity
     // problem: it's handled here, directly, with a plain stderr message and
-    // exit 3 -- not propagated as a bare `Err` (which would surface through
+    // exit 3, not propagated as a bare `Err` (which would surface through
     // main.rs's generic handler as exit 1, outside the nagios UNKNOWN(3)
     // vocabulary every other failure mode in this check uses).
     let (warning, critical) = match parse_args(args) {
@@ -166,7 +166,7 @@ fn unknown(summary: String) -> CheckResult {
 }
 
 /// Parse a `--warning`/`--critical` lag threshold via the shared duration/
-/// count parser (`0` allowed -- "alert on any lag at all"). A bare number
+/// count parser (`0` allowed: "alert on any lag at all"). A bare number
 /// (no suffix) is seconds, matching this domain's replication-lag semantics
 /// (same convention `pg` uses); `10s`/`500ms`/`2m` are also accepted now
 /// instead of only a bare integer or integer+`s`.

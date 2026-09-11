@@ -1,6 +1,6 @@
 # Config fixture for the "protected profile" branch of
 # tests/destructive_matrix.sh's guard matrix. Deliberately has no
-# `[profiles.*]` table -- config::resolve()'s "unknown profile" bail only
+# `[profiles.*]` table: config::resolve()'s "unknown profile" bail only
 # fires when the file defines a non-empty `profiles` table and the selected
 # name isn't in it (see src/frame/config.rs), so leaving it out means every
 # connection field for the "protected" profile still comes from the

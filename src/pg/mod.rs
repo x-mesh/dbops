@@ -184,7 +184,7 @@ pub async fn run(args: &PgArgs, ctx: &Ctx) -> Result<ExitCode> {
 
 async fn run_health(ctx: &Ctx, args: &HealthArgs) -> Result<ExitCode> {
     // A bad --warning/--critical value is a usage error, not a connectivity
-    // problem -- reject it before ever touching the network, with a plain
+    // problem: reject it before ever touching the network, with a plain
     // stderr message and exit 3, not a nagios UNKNOWN line.
     let (warning, critical) = match health::parse_args(args) {
         Ok(v) => v,
@@ -217,7 +217,7 @@ pub(crate) fn validate_identifier(name: &str) -> Result<()> {
 }
 
 /// Quote an already-[`validate_identifier`]-checked name for interpolation
-/// into SQL text. Doubling embedded `"` is defense in depth -- the charset
+/// into SQL text. Doubling embedded `"` is defense in depth: the charset
 /// check above already rejects anything but `[a-zA-Z0-9_]`, so this never
 /// actually finds a `"` to double on validated input.
 pub(crate) fn quote_ident(name: &str) -> String {

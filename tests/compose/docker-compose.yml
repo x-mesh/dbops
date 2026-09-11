@@ -3,7 +3,7 @@
 # Brought up/down as a unit by tests/integration.sh (project name
 # "dbops-test", ports in the 25xxx-29xxx range to stay clear of other
 # agents/services on the same host). Not meant to be started by hand for
-# anything other than debugging a failing integration.sh run --
+# anything other than debugging a failing integration.sh run.
 # tests/integration.sh always seeds required state (pg replication write,
 # mongo replset initiation) after `up`.
 #
@@ -11,7 +11,7 @@
 # independent stack (see tests/destructive_matrix.sh, project name
 # "dbops-matrix") can bring up this exact same file under a different port
 # range and run concurrently with tests/integration.sh on the same host.
-# Callers that don't export any of these get the original fixed ports --
+# Callers that don't export any of these get the original fixed ports:
 # zero behavior change for tests/integration.sh.
 #
 # MongoDB note: the replica set is initiated with the *internal* compose
@@ -19,7 +19,7 @@
 # Host-side access (tests/integration.sh, run from the bare-metal cargo
 # binary) instead connects straight to mongo1's published port with
 # `directConnection=true`, which skips topology-driven redirection to those
-# internal hostnames entirely -- see tests/README.md for why.
+# internal hostnames entirely; see tests/README.md for why.
 
 name: dbops-test
 

@@ -1,4 +1,4 @@
-//! `dbops os seed --index <name> --file <file>` -- streams an NDJSON file
+//! `dbops os seed --index <name> --file <file>`: streams an NDJSON file
 //! (one JSON document per line) into `<name>` via `_bulk`, in fixed-size
 //! chunks, without ever holding the whole file in memory.
 //!
@@ -99,8 +99,8 @@ struct SeedOutcome {
 
 enum SeedError {
     /// Line `line` (1-indexed) failed to parse as JSON. `indexed` is the
-    /// count of documents already sent via `_bulk` before this point --
-    /// always flushed before this variant is returned, so it's accurate.
+    /// count of documents already sent via `_bulk` before this point.
+    /// Always flushed before this variant is returned, so it's accurate.
     LineParse {
         indexed: u64,
         item_failures: u64,

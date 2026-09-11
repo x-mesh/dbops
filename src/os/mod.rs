@@ -56,7 +56,7 @@ pub enum OsCommand {
         index: String,
         #[arg(long)]
         file: PathBuf,
-        /// Required to authorize this seed against a protected profile --
+        /// Required to authorize this seed against a protected profile;
         /// must match the target index name (see frame::guard).
         #[arg(long = "confirm-name", value_name = "NAME")]
         confirm_name: Option<String>,
@@ -71,7 +71,7 @@ pub enum OsInitTarget {
         mapping: PathBuf,
         #[arg(long = "if-not-exists")]
         if_not_exists: bool,
-        /// Required to authorize this init against a protected profile --
+        /// Required to authorize this init against a protected profile;
         /// must match `name` (see frame::guard).
         #[arg(long = "confirm-name", value_name = "NAME")]
         confirm_name: Option<String>,
@@ -82,7 +82,7 @@ pub enum OsInitTarget {
 pub enum OsResetTarget {
     Index {
         name: String,
-        /// Required to authorize this reset against a protected profile --
+        /// Required to authorize this reset against a protected profile;
         /// must match `name` (see frame::guard).
         #[arg(long = "confirm-name", value_name = "NAME")]
         confirm_name: Option<String>,
@@ -108,7 +108,7 @@ pub async fn run(args: &OsArgs, ctx: &Ctx) -> Result<ExitCode> {
 
 async fn run_health(health_args: &HealthArgs, ctx: &Ctx) -> Result<ExitCode> {
     // A bad --warning/--critical value is a usage error, not a connectivity
-    // problem -- reject it before ever touching the network, with a plain
+    // problem: reject it before ever touching the network, with a plain
     // stderr message and exit 3, not a nagios UNKNOWN line.
     let (warning, critical) = match health::parse_args(health_args) {
         Ok(v) => v,
@@ -173,7 +173,7 @@ async fn run_indices(all: bool, ctx: &Ctx) -> Result<ExitCode> {
 }
 
 /// Prints two tables (unassigned shards, then the per-node distribution
-/// summary) rather than one -- see `shards::ShardsReport`'s doc comment for
+/// summary) rather than one. See `shards::ShardsReport`'s doc comment for
 /// why they aren't merged. In `--json` mode this prints two independent
 /// JSON values back to back; `jq` reads a whitespace-separated stream of
 /// top-level JSON values natively, so `dbops os shards --json | jq .`
@@ -229,10 +229,10 @@ async fn run_stats(index: Option<&str>, ctx: &Ctx) -> Result<ExitCode> {
     }
 }
 
-/// `dbops os reset index <name>` -- drop + recreate, preserving the
+/// `dbops os reset index <name>`: drop + recreate, preserving the
 /// existing mapping on a best-effort basis (see
 /// [`init::fetch_mapping_for_recreate`]). A missing index is a plain
-/// argument error (exit 1, no side effect) rather than a guard-gated plan --
+/// argument error (exit 1, no side effect) rather than a guard-gated plan:
 /// there is nothing to authorize when there is nothing to drop. Everything
 /// past that point (the actual drop+create) is a single two-action plan
 /// sharing one `target` (the index name), per the guard contract that every

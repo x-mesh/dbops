@@ -3,7 +3,7 @@
 //! size/usage.
 //!
 //! Standalone nodes (and replica-set members before `rs.initiate()`) have no
-//! `local.oplog.rs` at all -- that is reported plainly and exits 0, not an
+//! `local.oplog.rs` at all: that is reported plainly and exits 0, not an
 //! error, since "no oplog" is a valid, expected topology (PRD edge case).
 
 use anyhow::{Context, Result};

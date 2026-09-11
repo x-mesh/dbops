@@ -1,7 +1,7 @@
 //! `dbops pg replication`: on a primary, `pg_stat_replication` per connected
 //! standby (client address, WAL sender state, sent/replay LSN diff in
 //! bytes, replay lag in seconds). On a standby (`pg_is_in_recovery()` true),
-//! there's no equivalent per-standby view of *this* node's own lag -- that
+//! there's no equivalent per-standby view of *this* node's own lag. That
 //! comes from `pg_last_xact_replay_timestamp()` instead, so the report
 //! shape switches to a role/value summary.
 

@@ -31,7 +31,7 @@ const DEFAULT_PORT: u16 = 5432;
 ///
 /// `insecure` swaps the webpki-roots certificate verifier for one that
 /// accepts any server certificate (self-signed/internal CAs the local trust
-/// store doesn't carry) -- TLS itself is still negotiated either way.
+/// store doesn't carry). TLS itself is still negotiated either way.
 pub async fn connect(
     profile: &PostgresProfile,
     timeout: Duration,
@@ -61,7 +61,7 @@ pub async fn connect(
     // the driver future must be polled somewhere or every query on `client`
     // hangs forever. Spawning it means a post-handshake connection drop
     // surfaces as a failure on the next query rather than through this
-    // function's return value -- the same tradeoff every tokio-postgres
+    // function's return value, the same tradeoff every tokio-postgres
     // caller makes.
     tokio::spawn(async move {
         if let Err(err) = connection.await {
@@ -87,7 +87,7 @@ fn build_connector(insecure: bool) -> MakeRustlsConnect {
 
 /// `--insecure`'s certificate verifier: accepts any server certificate
 /// (self-signed, expired, hostname mismatch, ...). Only the peer-identity
-/// check is skipped -- the TLS handshake, encryption, and channel binding
+/// check is skipped. The TLS handshake, encryption, and channel binding
 /// still run for real.
 #[derive(Debug)]
 struct AcceptAnyCert;
@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn build_connector_insecure_does_not_panic() {
         // Exercises the ClientConfig/verifier wiring without a network
-        // connection -- construction alone catches API misuse (wrong
+        // connection. Construction alone catches API misuse (wrong
         // builder state, missing provider) that would otherwise only
         // surface the first time `--insecure` is used against a live
         // server.

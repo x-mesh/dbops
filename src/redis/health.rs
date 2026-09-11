@@ -10,12 +10,12 @@ use crate::frame::{exit, health, output, Ctx, ExitCode, HealthArgs};
 use crate::redis::connect;
 
 /// Connection failures and command timeouts both render as `Unknown`
-/// (exit 3) rather than `Critical` -- an unreachable server is a monitoring
+/// (exit 3) rather than `Critical`: an unreachable server is a monitoring
 /// blind spot, not a confirmed-bad state.
 pub async fn run(args: &HealthArgs, ctx: &Ctx) -> Result<ExitCode> {
     // A bad --warning/--critical value is a usage error, not a connectivity
     // problem: reject it here, directly, with a plain stderr message and
-    // exit 3 -- previously this got silently treated as "no threshold
+    // exit 3. Previously this got silently treated as "no threshold
     // configured" (`.parse::<f64>().ok()` swallowed the error), so a typo'd
     // flag disabled the check without any indication anything was wrong.
     let (warning, critical) = match parse_args(args) {
@@ -52,7 +52,7 @@ fn parse_args(args: &HealthArgs) -> Result<(Option<f64>, Option<f64>)> {
 }
 
 /// Parse a `--warning`/`--critical` response-time threshold via the shared
-/// duration/count parser (`0` allowed -- "alert on any response time at
+/// duration/count parser (`0` allowed: "alert on any response time at
 /// all"). A bare number (no suffix) is milliseconds, matching this domain's
 /// legacy convention (`--warning 50` == 50ms); `500ms`/`5s`/etc. now also
 /// work instead of silently being dropped.
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn parse_args_accepts_duration_suffixes_as_milliseconds() {
         // Previously "0ms"/"5s" failed plain f64::parse and were silently
-        // dropped as "no threshold configured" -- now they resolve to the
+        // dropped as "no threshold configured". Now they resolve to the
         // equivalent millisecond value instead of erroring or vanishing.
         let (_, critical) = parse_args(&args(None, Some("0ms"))).unwrap();
         assert_eq!(critical, Some(0.0));

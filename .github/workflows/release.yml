@@ -8,12 +8,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
   # Pinned to match the version verified in docs/build-spike.md's musl
-  # cross-build spike -- bump deliberately, not silently via "latest".
+  # cross-build spike. Bump deliberately, not silently via "latest".
   ZIG_VERSION: "0.16.0"
 
 jobs:
   # One job per shipped target, each a thin wrapper around
-  # scripts/release-build.sh --target <triple> -- the actual build/gate/
+  # scripts/release-build.sh --target <triple>: the actual build/gate/
   # package logic lives in one place (that script) instead of being
   # duplicated across matrix legs in YAML.
   build:
@@ -42,7 +42,7 @@ jobs:
 
       # musl targets only: zig (cargo-zigbuild's cross linker/sysroot
       # provider) + QEMU (so Docker can run the Alpine gate's foreign-arch
-      # container -- e.g. arm64 under an amd64 ubuntu-latest runner).
+      # container, e.g. arm64 under an amd64 ubuntu-latest runner).
       # macOS builds natively, needs neither.
       # v2, not v1: zig renamed its release tarballs at 0.15
       # (zig-linux-x86_64-<v> -> zig-x86_64-linux-<v>), and setup-zig@v1 only

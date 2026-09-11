@@ -7,7 +7,7 @@
 //! without extra confirmation. A missing config file is not an error:
 //! every field can also come from an env var or (eventually) a CLI flag.
 
-// `resolve()` isn't threaded into `main.rs`/`Ctx` yet -- that lands with the
+// `resolve()` isn't threaded into `main.rs`/`Ctx` yet. That lands with the
 // task that wires `ResolvedProfile` into the domain modules (see
 // `frame::ctx::Ctx`, which has the same `#[allow(dead_code)]` for the same
 // reason). Until then everything below is only reachable from this module's
@@ -501,7 +501,7 @@ mod tests {
         );
         // `env:VAR` inside a config value is a `SecretRef` that reads the
         // real process environment at resolve time (per `SecretRef::resolve`'s
-        // contract) -- distinct from the `env: &HashMap` snapshot `resolve()`
+        // contract), distinct from the `env: &HashMap` snapshot `resolve()`
         // takes for `DBOPS_<DB>_<FIELD>` overrides.
         //
         // SAFETY: `DBOPS_CFG_TEST_PG_USER` is unique to this test.

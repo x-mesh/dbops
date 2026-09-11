@@ -467,9 +467,9 @@ scripts/record-demos.sh --only health  # just docs/tape/health.tape
 scripts/record-demos.sh --seed-only    # bring the fixture up and stop
 ```
 
-The commands in the tapes run against real databases -- the script brings up
+The commands in the tapes run against real databases (the script brings up
 the same docker compose fixture the tests use, seeds it, and points a `demo`
-profile at it -- so a GIF cannot drift from what the tool actually prints.
+profile at it), so a GIF cannot drift from what the tool actually prints.
 Re-render whenever output changes. Note that vhs 0.12.0 silently writes
 nothing; the script checks for it and points at 0.11.0.
 

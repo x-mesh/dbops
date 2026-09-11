@@ -38,8 +38,8 @@ Sleep 1800ms
 # same check CRITICAL and exits 2, which is what a monitoring agent reads.
 #
 # redis rather than pg here because this has to trip every single time it is
-# recorded. A caught-up standby reports no measurable lag at all -- not zero
-# lag, none -- so `pg health --critical 1ms` against an idle fixture stays
+# recorded. A caught-up standby reports no measurable lag at all (not zero
+# lag, none), so `pg health --critical 1ms` against an idle fixture stays
 # OK and the demo would contradict its own caption. A PING always takes
 # longer than a thousandth of a millisecond.
 Type 'dbops redis health --critical 0.001ms; echo "exit=$?"'

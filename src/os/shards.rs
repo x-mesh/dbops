@@ -94,7 +94,7 @@ fn build_reports(entries: &[Value]) -> ShardsReport {
 
     unassigned_rows.sort();
 
-    // Highest shard count first -- that's the node most likely to be the
+    // Highest shard count first: that's the node most likely to be the
     // imbalance the operator is hunting for.
     let mut distribution: Vec<(String, u64)> = node_counts.into_iter().collect();
     distribution.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));

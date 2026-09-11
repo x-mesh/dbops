@@ -2,7 +2,7 @@
 //! active sessions running longer than the threshold, from
 //! `pg_stat_activity`. Without `--long-running` every active session is
 //! listed unfiltered (threshold is ignored). Query text is truncated to
-//! [`MAX_QUERY_CHARS`] here -- `frame::output` only escapes control
+//! [`MAX_QUERY_CHARS`] here: `frame::output` only escapes control
 //! characters, it never shortens a value.
 
 use std::time::Duration;

@@ -1,4 +1,4 @@
-//! `dbops pg init schema` (R23) and `dbops pg reset db` (R25) -- the two
+//! `dbops pg init schema` (R23) and `dbops pg reset db` (R25): the two
 //! `pg` subcommands that create or destroy whole databases/schemas, grouped
 //! together because both may need to connect somewhere other than the
 //! resolved profile's own `dbname` (schema init via `--db`, reset always via
@@ -16,7 +16,7 @@ use crate::frame::plan::{ActionKind, PlanPreview, PlannedAction};
 use crate::frame::{Ctx, ExitCode};
 use crate::pg::{client, quote_ident, validate_identifier};
 
-/// Every `pg reset db` connects here first -- a database can't `DROP` (or
+/// Every `pg reset db` connects here first: a database can't `DROP` (or
 /// recreate) itself while a session is connected to it.
 const MAINTENANCE_DB: &str = "postgres";
 
@@ -63,7 +63,7 @@ pub async fn run_schema(
     };
 
     // Real target state for the dry-run/confirmation preview, not just the
-    // statement count -- an operator deciding whether to apply a schema file
+    // statement count: an operator deciding whether to apply a schema file
     // needs to know up front whether the target already has tables in it.
     let table_count = table_count_via(&pg_client).await;
     let concurrent = statements.iter().any(|s| contains_concurrent_ddl(s));
@@ -111,9 +111,9 @@ pub async fn run_schema(
 
 /// Apply every statement inside one `BEGIN`/`COMMIT` via the simple query
 /// protocol (which accepts a `;`-separated multi-statement batch in one
-/// call). On failure, the batch aborts mid-flight -- postgres skips every
+/// call). On failure, the batch aborts mid-flight (postgres skips every
 /// remaining statement including `COMMIT` once the transaction enters the
-/// aborted state -- so nothing from this run is left applied; an explicit
+/// aborted state), so nothing from this run is left applied; an explicit
 /// `ROLLBACK` afterward just makes sure the session itself isn't left
 /// holding that aborted transaction open.
 async fn apply_transactional(pg_client: &Client, statements: &[String]) -> Result<ExitCode> {
@@ -140,7 +140,7 @@ async fn apply_transactional(pg_client: &Client, statements: &[String]) -> Resul
 /// Fallback for files containing transaction-incompatible DDL (e.g. `CREATE
 /// INDEX CONCURRENTLY`): run each statement as its own simple query. A
 /// failure is reported by 1-based statement number, and everything before it
-/// stays applied -- there is no transaction to roll back.
+/// stays applied: there is no transaction to roll back.
 async fn apply_statement_by_statement(
     pg_client: &Client,
     statements: &[String],
@@ -165,7 +165,7 @@ async fn apply_statement_by_statement(
 }
 
 /// Best-effort table count for the connected database. `None` on any
-/// failure (e.g. insufficient privilege) -- this is dry-run/plan context,
+/// failure (e.g. insufficient privilege). This is dry-run/plan context,
 /// not something worth failing the whole command over.
 async fn table_count_via(pg_client: &Client) -> Option<i64> {
     pg_client
@@ -190,7 +190,7 @@ fn file_target_label(file: &Path) -> String {
         .unwrap_or_else(|| file.display().to_string())
 }
 
-/// Simple check for DDL that cannot run inside a transaction block --
+/// Simple check for DDL that cannot run inside a transaction block,
 /// currently just `CONCURRENTLY` (`CREATE|DROP|REINDEX ... CONCURRENTLY`).
 /// Not a full SQL parser: a word-boundary scan over the uppercased
 /// statement text, which is enough for the form schema files in practice
@@ -379,7 +379,7 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
     let name_q = quote_ident(name);
 
     // PG13+ `WITH (FORCE)` disconnects any other session on the target db
-    // instead of failing the drop -- consistent with this toolkit's PG13
+    // instead of failing the drop, consistent with this toolkit's PG13
     // baseline (see pg::health's MIN_SUPPORTED_MAJOR_VERSION).
     if let Err(err) = pg_client
         .simple_query(&format!("DROP DATABASE {name_q} WITH (FORCE);"))
@@ -400,7 +400,7 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
 
 /// Recreate a just-dropped database, trying to preserve its original owner
 /// first and falling back to the connecting role as owner (postgres's own
-/// default) if that specific grant fails -- e.g. the connecting role lacks
+/// default) if that specific grant fails, e.g. the connecting role lacks
 /// `CREATEROLE`/superuser to assign ownership to another role. The database
 /// not existing at all is worse than existing with the "wrong" owner, so
 /// this degrades rather than leaving the db dropped.
@@ -447,7 +447,7 @@ async fn database_size_and_owner(
 
 /// `PostgresProfile` is owned by `frame::config` and off-limits to edit from
 /// this module, so every db-override call site clones the resolved
-/// profile's postgres block and swaps the one field it needs -- rather than
+/// profile's postgres block and swaps the one field it needs, rather than
 /// connecting with the profile's own (possibly wrong-for-this-command)
 /// `dbname`.
 fn profile_for_db(ctx: &Ctx, db_override: Option<&str>) -> PostgresProfile {

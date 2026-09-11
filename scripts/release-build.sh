@@ -74,7 +74,7 @@ is_musl_target() {
 
 # Which targets this run builds/gates/packages: everything by default (the
 # local "one command, all three artifacts" path), or a single target when
-# --target narrows it (the CI matrix path -- one job per target, each
+# --target narrows it (the CI matrix path: one job per target, each
 # reusing this same script instead of duplicating its gate logic in YAML).
 BUILD_TARGETS=()
 if [ -n "$TARGET_FILTER" ]; then
@@ -97,8 +97,8 @@ bin_path_for() {
 }
 
 # Alpine needs the matching --platform to run a foreign-arch binary under
-# QEMU emulation; kept as a case statement instead of an associative array
-# -- a stock macOS /bin/bash (3.2) has none, and this script only assumes
+# QEMU emulation; kept as a case statement instead of an associative array:
+# a stock macOS /bin/bash (3.2) has none, and this script only assumes
 # POSIX-ish bash, not a specific major version.
 docker_platform_for() {
   case "$1" in
@@ -137,18 +137,18 @@ done
 # documented musl cross-compile regression; openssl-sys would break the
 # "no external library links" static-binary requirement outright). `cargo
 # tree -i <pkg>` exits non-zero with "did not match any packages" when the
-# package is absent -- that failure is the pass case here.
+# package is absent. That failure is the pass case here.
 
 log "gate: crypto backend (no openssl-sys / aws-lc-sys)..."
 check_absent() {
   local target_flag="$1" pkg="$2"
   # $target_flag is intentionally either empty or a single "--target
-  # <triple>" pair, not a value needing quoting -- word-splitting it here
+  # <triple>" pair, not a value needing quoting. Word-splitting it here
   # is what lets an empty string vanish instead of passing cargo an empty
   # argument.
   # shellcheck disable=SC2086
   if cargo tree $target_flag -i "$pkg" >/dev/null 2>&1; then
-    fail "$pkg found in dependency graph ($target_flag) -- see docs/build-spike.md"
+    fail "$pkg found in dependency graph ($target_flag): see docs/build-spike.md"
   fi
 }
 for target in "${BUILD_TARGETS[@]}"; do
@@ -166,10 +166,10 @@ log "gate passed: neither crate is in the dependency graph on any built target"
 #
 # A dynamically-linked binary would make `ldd` print a list of .so
 # dependencies; Alpine's musl ldd instead refuses a static binary outright
-# ("not a valid dynamic program" and similar wording across versions) --
-# that refusal is the proof this gate is checking for, not an error. The
+# ("not a valid dynamic program" and similar wording across versions).
+# That refusal is the proof this gate is checking for, not an error. The
 # host binary has no equivalent proof (it isn't statically linked, nor
-# meant to be -- only the linux musl artifacts ship to servers).
+# meant to be; only the linux musl artifacts ship to servers).
 
 if [ "$SKIP_DOCKER_GATE" -eq 1 ]; then
   log "skipping Alpine static-link gate (--skip-docker-gate)"
@@ -183,9 +183,9 @@ else
       sh -c '(ldd /dbops 2>&1 || true); /dbops --version') \
       || fail "$target: alpine container run failed"
     echo "$out" | grep -qiE 'not a (valid )?dynamic (program|executable)' \
-      || fail "$target: ldd did not report static linking -- got: $out"
+      || fail "$target: ldd did not report static linking; got: $out"
     echo "$out" | grep -q "dbops $VERSION" \
-      || fail "$target: --version did not report 'dbops $VERSION' -- got: $out"
+      || fail "$target: --version did not report 'dbops $VERSION'; got: $out"
     log "  $target: static (ldd refuses it), --version reports $VERSION"
   done
 fi
@@ -193,7 +193,7 @@ fi
 # --- package artifacts ----------------------------------------------------
 
 log "packaging dist/ artifacts..."
-# Only wipe dist/ on a full (no --target) run -- a single-target CI matrix
+# Only wipe dist/ on a full (no --target) run. A single-target CI matrix
 # leg must not delete artifacts a sibling job (or a prior local invocation
 # simulating the matrix) already placed there.
 if [ -z "$TARGET_FILTER" ]; then
@@ -215,4 +215,4 @@ done
 
 ( cd "$DIST_DIR" && sha256 dbops-"$VERSION"-* > SHA256SUMS )
 
-log "done -- ${#BUILD_TARGETS[@]} artifact(s) in $DIST_DIR/ (+ SHA256SUMS)"
+log "done: ${#BUILD_TARGETS[@]} artifact(s) in $DIST_DIR/ (+ SHA256SUMS)"

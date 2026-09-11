@@ -16,7 +16,7 @@ exclude = ["docs/media/*", "docs/tape/*", "tests/compose/*", "dist/*"]
 [dependencies]
 anyhow = "1.0.103"
 clap = { version = "4.6.1", features = ["derive"] }
-# `dbops completion <shell>` (ROADMAP M4) -- generates a shell completion
+# `dbops completion <shell>` (ROADMAP M4): generates a shell completion
 # script from the same `Cli` clap::Command the rest of the binary runs, so
 # it can never drift from the real subcommand/flag surface.
 clap_complete = "4.6"

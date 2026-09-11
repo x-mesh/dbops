@@ -5,8 +5,8 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
 #
-# Once installed, `dbops update` does the same job from inside the binary --
-# this script exists only to get the first copy onto a machine.
+# Once installed, `dbops update` does the same job from inside the binary.
+# This script exists only to get the first copy onto a machine.
 #
 # Environment:
 #   DBOPS_VERSION       Release tag to install (e.g. v0.2.0). Default: latest.
@@ -80,7 +80,7 @@ detect_target() {
   case "$os" in
     Darwin)
       # A shell running under Rosetta 2 on Apple silicon reports x86_64, but
-      # the hardware -- and the artifact that should be installed -- is arm64.
+      # the hardware (and the artifact that should be installed) is arm64.
       # sysctl.proc_translated is 1 exactly in that case.
       if [ "$arch" = "x86_64" ] && [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]; then
         arch="arm64"
@@ -156,9 +156,9 @@ fetch() {
 
 api_failed() {
   if [ -n "$TOKEN" ]; then
-    die "GitHub API request failed for $REPO -- check the token can read that repository (needs \`contents: read\`), and that release '${VERSION:-latest}' exists"
+    die "GitHub API request failed for $REPO; check the token can read that repository (needs \`contents: read\`), and that release '${VERSION:-latest}' exists"
   fi
-  die "GitHub API request failed for $REPO -- if it is private, export GITHUB_TOKEN with read access; unauthenticated calls are also capped at 60/hour"
+  die "GitHub API request failed for $REPO; if it is private, export GITHUB_TOKEN with read access; unauthenticated calls are also capped at 60/hour"
 }
 
 # --- release metadata --------------------------------------------------------
@@ -176,7 +176,7 @@ fetch_release_json() {
 # Print the release's tag_name, given the release JSON file.
 #
 # tag_name appears near the top of the release object, well before the
-# free-form `body` -- and a `body` that happens to contain the text
+# free-form `body`, and a `body` that happens to contain the text
 # "tag_name" would have its quotes backslash-escaped, so it cannot match.
 release_tag() {
   tr ',' '\n' <"$1" |
@@ -189,7 +189,7 @@ release_tag() {
 #
 # The assets API (`/releases/assets/<id>` + `Accept: application/octet-stream`)
 # is used rather than each asset's browser_download_url because it is the only
-# form that works for a private repository -- and it works unauthenticated for
+# form that works for a private repository. It also works unauthenticated for
 # a public one too, so there is one download path to reason about.
 #
 # GitHub serializes an asset as {"url":".../releases/assets/<id>","id":...,
@@ -256,7 +256,7 @@ install_binary() {
 
   mkdir -p "$_dir" 2>/dev/null || die "cannot create $_dir"
   if ! cp "$_src" "$_staged" 2>/dev/null; then
-    die "cannot write into $_dir -- re-run with sudo, or set DBOPS_INSTALL_DIR to a directory you own (e.g. \$HOME/.local/bin)"
+    die "cannot write into $_dir. Re-run with sudo, or set DBOPS_INSTALL_DIR to a directory you own (e.g. \$HOME/.local/bin)"
   fi
   chmod 0755 "$_staged"
   mv -f "$_staged" "$_dest" || {
@@ -269,7 +269,7 @@ install_binary() {
 warn_if_not_on_path() {
   case ":${PATH:-}:" in
     *":$1:"*) ;;
-    *) warn "$1 is not on your PATH -- add it, e.g. \`export PATH=\"$1:\$PATH\"\`" ;;
+    *) warn "$1 is not on your PATH; add it, e.g. \`export PATH=\"$1:\$PATH\"\`" ;;
   esac
 }
 

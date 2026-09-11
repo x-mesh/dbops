@@ -15,7 +15,7 @@ use crate::frame::Ctx;
 /// async connection, honoring `ctx.timeout` for the handshake and
 /// `ctx.insecure` for TLS hostname verification.
 ///
-/// Returns a plain `anyhow::Result` -- callers decide how a failure maps
+/// Returns a plain `anyhow::Result`: callers decide how a failure maps
 /// onto their own exit-code contract (`health` -> Unknown/exit 3, stat
 /// commands -> stderr/exit 4).
 pub async fn connect(ctx: &Ctx) -> Result<MultiplexedConnection> {

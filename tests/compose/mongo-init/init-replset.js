@@ -4,7 +4,7 @@
 // rs.status() succeeds and this is a no-op.
 //
 // mongo1 gets priority 2 (vs. 1 for the other two) so it deterministically
-// wins the primary election on a clean startup -- tests/integration.sh
+// wins the primary election on a clean startup. tests/integration.sh
 // connects with `directConnection=true` straight at mongo1's published
 // port, which only works cleanly for every read/admin command this
 // toolkit issues (health, replSetGetStatus, serverStatus, dbStats,

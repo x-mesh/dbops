@@ -7,7 +7,7 @@
 #
 # Exit code: 0 if every hard check passed, 1 otherwise. "Defects" (see
 # DEFECTS below) are real product-behavior findings surfaced during
-# verification, logged clearly, but never fail the run -- this harness
+# verification, logged clearly, but never fail the run: this harness
 # can't fix src/ (owned by other in-flight work), it can only report.
 set -euo pipefail
 
@@ -17,7 +17,7 @@ COMPOSE_FILE="$SCRIPT_DIR/compose/docker-compose.yml"
 EMPTY_CONFIG="$SCRIPT_DIR/compose/empty.toml"
 PROJECT_NAME="dbops-test"
 
-# git only tracks the executable bit, not full file mode -- a fresh clone
+# git only tracks the executable bit, not full file mode: a fresh clone
 # can come back group/other-readable depending on umask, which makes
 # config.rs print a "chmod 600" warning on stderr for every single dbops
 # invocation and would otherwise corrupt every --json capture below.
@@ -55,7 +55,7 @@ PG_UNREACHABLE_PORT=25199
 
 # `directConnection=true` talks straight to mongo1 without the driver ever
 # needing to resolve the replset's internally-configured member hostnames
-# (mongo1:27017 etc., only reachable from inside the compose network) --
+# (mongo1:27017 etc., only reachable from inside the compose network);
 # see the docker-compose.yml header comment and tests/README.md.
 MONGO_URI="mongodb://localhost:27217/?directConnection=true"
 MONGO_UNREACHABLE_URI="mongodb://localhost:27299/?directConnection=true"
@@ -67,7 +67,7 @@ REDIS_URI="redis://localhost:26379"
 REDIS_UNREACHABLE_URI="redis://localhost:26399"
 
 # psql inside the bitnami containers requires a password once
-# POSTGRESQL_PASSWORD is set, even over the local unix socket -- wraps
+# POSTGRESQL_PASSWORD is set, even over the local unix socket. Wraps
 # `compose exec` with PGPASSWORD injected so callers don't have to repeat it.
 pg_psql() {
   local svc="$1"
@@ -117,7 +117,7 @@ wait_for() {
 
 # --- run_capture: invoke a command without set -e aborting the script on
 # a nonzero exit (we deliberately assert on 1/2/3/4 constantly). stdout and
-# stderr are captured separately -- dbops only ever prints its --json
+# stderr are captured separately: dbops only ever prints its --json
 # payload to stdout, but can also emit an unrelated stderr line first (e.g.
 # config.rs's 0600-permission warning); merging the two would silently
 # prepend that line onto the JSON and break every jq check downstream. ----
@@ -265,7 +265,7 @@ assert_exit() {
   if [[ "$actual" -eq "$expected" ]]; then
     pass "$desc (exit $actual)"
   else
-    fail "$desc (expected exit $expected, got $actual) -- $(diag)"
+    fail "$desc (expected exit $expected, got $actual): $(diag)"
   fi
 }
 
@@ -274,7 +274,7 @@ check_jq() {
   shift
   run_capture "$@"
   if [[ "$CODE" -ne 0 ]]; then
-    fail "$desc (dbops exited $CODE instead of 0) -- $(diag)"
+    fail "$desc (dbops exited $CODE instead of 0): $(diag)"
     return
   fi
   if printf '%s' "$OUT" | jq . >/dev/null 2>&1; then
@@ -287,7 +287,7 @@ check_jq() {
 }
 
 # =========================================================================
-# 4. SC2 -- health checks succeed (exit 0)
+# 4. SC2: health checks succeed (exit 0)
 # =========================================================================
 
 section "SC2: health checks (exit 0)"
@@ -296,7 +296,7 @@ section "SC2: health checks (exit 0)"
 #
 # Deliberately NOT asserting a `lag` metric here. The primary's lag is
 # MAX(replay_lag) over pg_stat_replication, which is NULL whenever the
-# standby has no un-replayed WAL -- exactly the state after the seed above
+# standby has no un-replayed WAL, exactly the state after the seed above
 # has replicated and the cluster goes idle. So a lag metric on the *primary*
 # is genuinely absent for a healthy caught-up cluster; requiring it is a race
 # the primary loses. The replica-side lag guarantee is what SC3 checks below
@@ -311,10 +311,10 @@ if [[ "$CODE" -eq 0 ]]; then
   if [[ "$summary" == primary,* ]]; then
     pass "SC2 pg health: exit 0, role=primary (\"$summary\"), ${elapsed_ms}ms"
   else
-    fail "SC2 pg health: exit 0 but summary is not a primary line -- $(diag)"
+    fail "SC2 pg health: exit 0 but summary is not a primary line: $(diag)"
   fi
 else
-  fail "SC2 pg health: expected exit 0, got $CODE, ${elapsed_ms}ms -- $(diag)"
+  fail "SC2 pg health: expected exit 0, got $CODE, ${elapsed_ms}ms: $(diag)"
 fi
 
 use_mongo
@@ -331,9 +331,9 @@ status=$(printf '%s' "$OUT" | jq -r '.status' 2>/dev/null || echo "?")
 if [[ "$CODE" -eq 0 ]]; then
   pass "SC2 os health: exit 0, status=$status, ${elapsed_ms}ms"
 elif [[ "$CODE" -eq 1 && "$status" == "WARNING" ]]; then
-  pass "SC2 os health: cluster reported yellow/WARNING (exit 1), treated as pass per spec -- summary: $(printf '%s' "$OUT" | jq -r '.summary' 2>/dev/null)"
+  pass "SC2 os health: cluster reported yellow/WARNING (exit 1), treated as pass per spec, summary: $(printf '%s' "$OUT" | jq -r '.summary' 2>/dev/null)"
 else
-  fail "SC2 os health: expected exit 0 (or 1/WARNING for a yellow cluster), got $CODE status=$status, ${elapsed_ms}ms -- $(diag)"
+  fail "SC2 os health: expected exit 0 (or 1/WARNING for a yellow cluster), got $CODE status=$status, ${elapsed_ms}ms: $(diag)"
 fi
 
 use_redis
@@ -343,13 +343,13 @@ elapsed_ms=$(((($(date +%s%N)) - start_ns) / 1000000))
 assert_exit "SC2 redis health (${elapsed_ms}ms)" 0 "$CODE"
 
 # =========================================================================
-# 5. SC3 -- exit code contract (2 = critical, 3 = unknown)
+# 5. SC3: exit code contract (2 = critical, 3 = unknown)
 # =========================================================================
 
 section "SC3: exit-code contract"
 
 # --- pg: replica lag > 0 against a near-zero --critical -> CRITICAL/exit 2
-# NOTE: a literal `--critical 0s` does NOT work here -- pg::health's
+# NOTE: a literal `--critical 0s` does NOT work here: pg::health's
 # threshold parser delegates to frame::ctx::parse_timeout, which rejects a
 # parsed value of exactly 0 (`.filter(|n| *n > 0)`, written for --timeout,
 # where 0 is nonsensical). For a lag *threshold* zero is a completely
@@ -362,7 +362,7 @@ assert_exit "SC3 pg health --critical 1ms (replica, lag present)" 2 "$CODE"
 
 # --- redis: any PING round trip > 0ms against a 0 threshold -> exit 2 ---
 # NOTE: redis::health's threshold flags are bare milliseconds with NO unit
-# suffix (unlike pg/mongo's duration-string flags) -- evaluate_thresholds()
+# suffix (unlike pg/mongo's duration-string flags): evaluate_thresholds()
 # parses with plain f64::parse(), so "0ms" fails to parse and is silently
 # treated as "no threshold" (see the DEFECT logged further down). The
 # correct syntax here is a bare "0".
@@ -418,13 +418,13 @@ if [[ "$CODE" -eq 3 ]]; then
 forms like 500ms, 5s, 2m, or bare seconds\") instead of being treated as a valid zero-tolerance threshold. \
 src/pg/health.rs's parse_threshold() reuses frame::ctx::parse_timeout, whose n>0 filter exists for --timeout \
 (where a zero duration is meaningless) but is wrong for a nagios-style threshold, where 0 is a normal, common \
-setting. os/mongo/redis's threshold parsers all accept a literal 0 without issue -- pg is the outlier."
+setting. os/mongo/redis's threshold parsers all accept a literal 0 without issue; pg is the outlier."
 else
-  pass "SC3 pg health --critical 0s (unexpectedly accepted -- re-check the defect note above, it may be stale)"
+  pass "SC3 pg health --critical 0s (unexpectedly accepted; re-check the defect note above, it may be stale)"
 fi
 
 # mongo and redis health.rs do NOT follow the same pattern (see DEFECTS in
-# the final report) -- these two checks record the *actual* exit code as a
+# the final report). These two checks record the *actual* exit code as a
 # documented divergence rather than asserting the os/pg contract, so a
 # real (already-known) product inconsistency doesn't turn this harness red.
 use_mongo
@@ -454,7 +454,7 @@ An operator copying a pg/mongo-style threshold onto a redis health check gets no
 fi
 
 # =========================================================================
-# 6. SC5 -- every --json listing command parses with jq
+# 6. SC5: every --json listing command parses with jq
 # =========================================================================
 
 section "SC5: --json output parses with jq"
@@ -485,7 +485,7 @@ check_jq "SC5 os stats --json | jq ."   dbops os stats --json
 # two documents", not just "does jq exit 0".
 run_capture dbops os shards --json
 if [[ "$CODE" -ne 0 ]]; then
-  fail "SC5 os shards --json (dbops exited $CODE) -- $(diag)"
+  fail "SC5 os shards --json (dbops exited $CODE): $(diag)"
 else
   doc_count=$(printf '%s' "$OUT" | jq -c . 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$doc_count" -eq 2 ]]; then
@@ -509,7 +509,7 @@ section "SUMMARY"
 printf 'PASS: %d   FAIL: %d   DEFECTS logged: %d\n' "$PASS" "$FAIL" "${#DEFECTS[@]}" >&2
 
 if [[ "${#DEFECTS[@]}" -gt 0 ]]; then
-  printf '\nProduct defects discovered during verification (documented, non-blocking -- not fixed here, out of this harness'"'"'s file ownership):\n' >&2
+  printf '\nProduct defects discovered during verification (documented, non-blocking; not fixed here, out of this harness'"'"'s file ownership):\n' >&2
   i=1
   for d in "${DEFECTS[@]}"; do
     printf '  %d. %s\n' "$i" "$d" >&2

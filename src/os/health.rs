@@ -36,7 +36,7 @@ struct ClusterHealthBody {
 
 /// Parse `--warning`/`--critical` up front. A bad value is a usage error
 /// (exit 3, no nagios line), distinct from every other failure this check
-/// can hit -- callers must check this before calling [`health`], which stays
+/// can hit. Callers must check this before calling [`health`], which stays
 /// infallible.
 pub fn parse_args(args: &HealthArgs) -> Result<(Option<u64>, Option<u64>), String> {
     let warning = parse_threshold("--warning", args.warning.as_deref())?;
@@ -76,7 +76,7 @@ pub async fn health(
     }
 }
 
-/// `unassigned_shards` is a plain count, not a duration -- a value with a
+/// `unassigned_shards` is a plain count, not a duration: a value with a
 /// recognized time suffix (`"5s"`, `"500ms"`, ...) is a usage error here even
 /// though the shared parser accepts it as a `Threshold::Duration` for
 /// domains that measure time (`pg`/`mongo`/`redis`).
@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn threshold_never_downgrades_red() {
         // unassigned_shards is under both thresholds, but the cluster color
-        // is red -- must stay CRITICAL, never get pulled down to WARNING.
+        // is red: must stay CRITICAL, never get pulled down to WARNING.
         let result = build_result(&body("red", 1), Some(100), Some(200));
         assert_eq!(result.status, CheckStatus::Critical);
     }
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn parse_threshold_rejects_a_duration_value() {
-        // os measures a plain shard count, not time -- a duration-style
+        // os measures a plain shard count, not time: a duration-style
         // value ("5s") is a usage error here even though pg/mongo/redis
         // accept it.
         let err = parse_threshold("--critical", Some("5s")).unwrap_err();

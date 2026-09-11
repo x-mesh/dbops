@@ -4,23 +4,23 @@
 //! reqwest is built with the `rustls-no-provider` feature (see Cargo.toml),
 //! whose default server-certificate verifier is `rustls-platform-verifier`:
 //! it reads the host's system trust store and fails the *client build*
-//! outright -- "No CA certificates were loaded from the system" -- on an
+//! outright ("No CA certificates were loaded from the system") on an
 //! image that ships none (distroless, or a slim Debian without the
 //! `ca-certificates` package). A statically-linked binary whose whole point
 //! is to run on exactly those images can't depend on that.
 //!
 //! So these clients are handed an explicit config via reqwest's
 //! `use_preconfigured_tls` instead. Its root store is the union of:
-//!   - **webpki-roots** -- the Mozilla CA set, compiled into the binary, so
+//!   - **webpki-roots**: the Mozilla CA set, compiled into the binary, so
 //!     verifying a public endpoint (api.github.com, the release CDN) never
 //!     depends on the host having a CA bundle at all; and
-//!   - the host's **native roots**, best-effort -- so an endpoint whose
+//!   - the host's **native roots**, best-effort, so an endpoint whose
 //!     private CA is installed on the box (an intranet service behind
 //!     `http check`, a GitHub Enterprise mirror) still verifies.
 //!
 //! Bundled roots alone would reject the private-CA case; native roots alone
 //! are what breaks on a minimal image. The union covers both, and it changes
-//! trust only for these two reqwest clients -- the database clients keep
+//! trust only for these two reqwest clients. The database clients keep
 //! their own separate TLS configuration.
 //!
 //! This is the secure path only. `--insecure` (http check) never reaches
@@ -42,7 +42,7 @@ const ALPN_PROTOCOLS: [&[u8]; 2] = [b"h2", b"http/1.1"];
 /// clients. See the module docs for why the root store is a union.
 ///
 /// The crypto provider is passed explicitly (ring, the one backend this
-/// workspace compiles -- see Cargo.toml) rather than read from the
+/// workspace compiles; see Cargo.toml) rather than read from the
 /// process-wide default, so this is correct even if called before
 /// `main`'s `install_default()` and testable without it.
 pub fn bundled_root_config() -> Result<ClientConfig> {
@@ -53,7 +53,7 @@ pub fn bundled_root_config() -> Result<ClientConfig> {
 
     // Host's own roots on top, best-effort. A private CA lives here, not in
     // the Mozilla set; on a minimal image this returns nothing (or errors),
-    // which is fine -- the bundled set above still stands. Individual
+    // which is fine. The bundled set above still stands. Individual
     // malformed entries are skipped so one bad cert can't sink the config.
     let native = rustls_native_certs::load_native_certs();
     for cert in native.certs {
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn config_builds_with_bundled_roots_even_with_no_system_store() {
         // Doesn't install any crypto provider and doesn't depend on the host
-        // having a CA bundle -- exactly the minimal-image condition.
+        // having a CA bundle, exactly the minimal-image condition.
         let config = bundled_root_config().expect("config builds");
         assert_eq!(
             config.alpn_protocols,
@@ -87,7 +87,7 @@ mod tests {
     }
 
     /// The Mozilla set is compiled in, so the store is never empty regardless
-    /// of the host -- that is the whole point of the union.
+    /// of the host. That is the whole point of the union.
     #[test]
     fn bundled_roots_are_present_without_any_native_store() {
         assert!(

@@ -189,7 +189,7 @@ async fn fetch_db_report(mongo_client: &Client, db_name: &str) -> Result<StatRep
     for name in names {
         // A failing collStats (e.g. run against a view, which doesn't
         // support it) becomes an "unavailable" row instead of failing the
-        // whole report -- one uncooperative collection shouldn't hide every
+        // whole report. One uncooperative collection shouldn't hide every
         // other collection's stats.
         let stat = match db.run_command(doc! { "collStats": name.as_str() }).await {
             Ok(coll_doc) => parse_coll_stats(&name, &coll_doc),
@@ -203,7 +203,7 @@ async fn fetch_db_report(mongo_client: &Client, db_name: &str) -> Result<StatRep
 }
 
 /// Pure: raw `dbStats` response -> the fields this command cares about.
-/// Never fails -- an unrecognized/missing field just renders as `-` later,
+/// Never fails: an unrecognized/missing field just renders as `-` later,
 /// matching [`crate::mongo::connections`]'s tolerant-parsing style.
 fn parse_db_totals(doc: &Document) -> DbTotals {
     DbTotals {
@@ -268,7 +268,7 @@ fn build_db_report(collections: &[CollStat], totals: &DbTotals) -> StatReport {
     }
 }
 
-/// Tolerates `Int32`, `Int64`, or `Double` wire representations -- `dbStats`
+/// Tolerates `Int32`, `Int64`, or `Double` wire representations: `dbStats`
 /// and `collStats` field types vary by MongoDB version.
 fn bson_i64(doc: &Document, key: &str) -> Option<i64> {
     doc.get_i64(key)

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Destructive-command guard cross-verification matrix for dbops.
 #
-# tests/integration.sh's SC2/SC3/SC5 matrix never touches init/reset/seed --
-# this harness is the one that does. It brings up its own copy of the
+# tests/integration.sh's SC2/SC3/SC5 matrix never touches init/reset/seed.
+# This harness is the one that does. It brings up its own copy of the
 # tests/compose/docker-compose.yml fixture (project name "dbops-matrix",
 # ports offset from tests/integration.sh's "dbops-test" project so both can
-# run on the same host at once -- see the ${VAR:-default} port
+# run on the same host at once; see the ${VAR:-default} port
 # interpolation added to docker-compose.yml for this), builds dbops, runs
 # every (database x guard-scenario) combination below against the real
 # binary, then tears the fixture back down. One command:
@@ -24,12 +24,12 @@
 # Plus, per database:
 #   - reset against a target that does not exist -> exit 1, no side effect
 #   - init run twice (idempotent) -> exit 0 both times
-# Plus, per database that has a `seed` subcommand (os, mongo -- pg does not
+# Plus, per database that has a `seed` subcommand (os, mongo; pg does not
 # have one yet, see the note logged in the pg section below):
 #   - seed, non-TTY, no --yes -> exit 2, no document ever written
 #
 # "State unchanged" / "real change applied" is verified by direct queries
-# against each database (curl/mongosh/psql), never through dbops itself --
+# against each database (curl/mongosh/psql), never through dbops itself,
 # same principle as tests/integration.sh's pg_psql/mongosh checks: the tool
 # under test must never be the only witness to its own side effects.
 #
@@ -51,7 +51,7 @@ chmod 600 "$EMPTY_CONFIG" "$PROTECTED_CONFIG" 2>/dev/null || true
 # Port range offset from tests/integration.sh's "dbops-test" project (see
 # the header comment above and the ${VAR:-default} interpolation in
 # docker-compose.yml) so both fixtures can run on the same host
-# concurrently -- e.g. as separate CI jobs. redis/pg-replica are never
+# concurrently, e.g. as separate CI jobs. redis/pg-replica are never
 # started by this harness (see "bring up only what we need" below) but a
 # port is still reserved for redis in case that changes later.
 export PG_PRIMARY_HOST_PORT="${PG_PRIMARY_HOST_PORT:-25532}"
@@ -202,7 +202,7 @@ assert_exit() {
   if [[ "$actual" -eq "$expected" ]]; then
     pass "$desc (exit $actual)"
   else
-    fail "$desc (expected exit $expected, got $actual) -- $(diag)"
+    fail "$desc (expected exit $expected, got $actual): $(diag)"
   fi
 }
 
@@ -234,7 +234,7 @@ assert_false() {
 }
 
 # =========================================================================
-# 1. bring up only what this matrix needs (no pg-replica, no redis -- this
+# 1. bring up only what this matrix needs (no pg-replica, no redis; this
 #    harness never exercises replication or redis destructive commands)
 # =========================================================================
 
@@ -276,7 +276,7 @@ else
     fi
     log "cargo build failed (attempt $attempt/5)."
     if [[ "$attempt" -lt 5 ]]; then
-      log "src/ may have other agents' in-flight edits -- retrying in 120s..."
+      log "src/ may have other agents' in-flight edits. Retrying in 120s..."
       sleep 120
     fi
   done
@@ -298,7 +298,7 @@ log "using binary: $DBOPS_BIN"
 # Every call goes through `< /dev/null`: this matrix only ever exercises
 # the non-interactive guard paths (dry-run / declined-by-flags /
 # proceed-by-flags), never the interactive retry prompts guard.rs offers a
-# real TTY -- closing stdin makes std::io::stdin().is_terminal() reliably
+# real TTY: closing stdin makes std::io::stdin().is_terminal() reliably
 # false regardless of how this script itself was invoked.
 # =========================================================================
 
@@ -311,7 +311,7 @@ dbops() {
   "$DBOPS_BIN" --config "$EMPTY_CONFIG" "$@" < /dev/null
 }
 
-# "protected" is not defined under [profiles.*] in protected.toml -- every
+# "protected" is not defined under [profiles.*] in protected.toml: every
 # connection field still comes from the DBOPS_* env vars above (see
 # tests/compose/protected.toml's header comment); only [safety] matters.
 dbops_protected() {
@@ -324,7 +324,7 @@ UNIQ="$$"
 # 4. OpenSearch: os reset index
 # =========================================================================
 
-section "OS: reset index -- guard matrix"
+section "OS: reset index (guard matrix)"
 
 OS_MAPPING_FILE="$WORKDIR/os-mapping.json"
 printf '%s' '{"mappings":{"properties":{"note":{"type":"text"}}}}' > "$OS_MAPPING_FILE"
@@ -375,7 +375,7 @@ assert_exit "os idempotent init (2nd, --if-not-exists no-op)" 0 "$CODE"
 
 # --- seed guard ------------------------------------------------------------
 # src/os/seed.rs's run_seed() calls guard::authorize() *before* ever opening
-# the file (only the file's path is referenced in the plan text) -- so a
+# the file (only the file's path is referenced in the plan text), so a
 # nonexistent path proves the guard declined without ever touching it.
 OS_SEEDGUARD_IDX="dbops_matrix_seedguard_os_${UNIQ}"
 run_capture dbops os seed --index "$OS_SEEDGUARD_IDX" --file "/nonexistent/dbops-matrix-corrupt-os-${UNIQ}.ndjson"
@@ -387,7 +387,7 @@ assert_false "os seed guard: target index was never created" \
 # 5. MongoDB: mongo reset db
 # =========================================================================
 
-section "Mongo: reset db -- guard matrix"
+section "Mongo: reset db (guard matrix)"
 
 MONGO_SEED_FILE="$WORKDIR/mongo-seed-one.ndjson"
 printf '{"note":"canary"}\n' > "$MONGO_SEED_FILE"
@@ -423,7 +423,7 @@ assert_eq "mongo S3 protected/no-confirm-name: doc count unchanged" "1" "$(mongo
 run_capture dbops_protected mongo reset db "$MONGO_RESET_DB" --yes --confirm-name "$MONGO_RESET_DB"
 assert_exit "mongo S4 protected/confirm-name: real reset applied" 0 "$CODE"
 # mongo reset is a hard dropDatabase with nothing recreated (see
-# src/mongo/init.rs's module doc comment) -- unlike os/pg, "reset" here
+# src/mongo/init.rs's module doc comment). Unlike os/pg, "reset" here
 # really does mean the database is gone until the next write.
 assert_false "mongo S4 protected/confirm-name: database no longer exists (dropped, not recreated)" \
   "$(mongo_db_exists "$MONGO_RESET_DB" && echo true || echo false)"
@@ -434,7 +434,7 @@ assert_exit "mongo missing-target reset: exit code" 1 "$CODE"
 
 # --- idempotent init (SC6) ------------------------------------------------
 # mongo init db is idempotent by construction (probes listDatabaseNames
-# first, see src/mongo/init.rs) -- no --if-not-exists flag exists or is
+# first, see src/mongo/init.rs): no --if-not-exists flag exists or is
 # needed.
 MONGO_IDEM_DB="dbops_matrix_idem_db_${UNIQ}"
 run_capture dbops mongo init db "$MONGO_IDEM_DB" --yes
@@ -443,14 +443,14 @@ run_capture dbops mongo init db "$MONGO_IDEM_DB" --yes
 assert_exit "mongo idempotent init (2nd, already-exists no-op)" 0 "$CODE"
 
 # --- seed guard ------------------------------------------------------------
-# Unlike os::seed, src/mongo/seed.rs's run() calls probe_source(file) --
-# which does open the file -- *before* guard::authorize(), specifically so
+# Unlike os::seed, src/mongo/seed.rs's run() calls probe_source(file),
+# which does open the file, *before* guard::authorize(), specifically so
 # --dry-run can report an accurate document-count estimate (see that
 # module's doc comment). A missing file therefore fails at ARGUMENT_ERROR
 # (3) before ever reaching the guard, not at the guard's own exit 2. To
 # still prove "the guard declines before any document is written" for
 # mongo, this uses a file that IS openable (so probe_source succeeds) but
-# whose content is garbage -- probe_source's NDJSON path only counts
+# whose content is garbage: probe_source's NDJSON path only counts
 # non-blank lines, it never parses them, so a garbage line still lets the
 # probe succeed and the guard run.
 MONGO_SEEDGUARD_DB="dbops_matrix_seedguard_mongo_${UNIQ}"
@@ -463,7 +463,7 @@ assert_false "mongo seed guard: target database was never created" \
 # 6. PostgreSQL: pg reset db
 # =========================================================================
 
-section "PG: reset db -- guard matrix"
+section "PG: reset db (guard matrix)"
 
 PG_RESET_DB="dbops_matrix_reset_pg_${UNIQ}"
 pg_psql pg-primary -d postgres -c "DROP DATABASE IF EXISTS ${PG_RESET_DB};" >&2
@@ -500,7 +500,7 @@ assert_exit "pg missing-target reset: exit code" 1 "$CODE"
 # --- idempotent init schema (SC6) -----------------------------------------
 # pg has no bare "create empty database" command (PgInitTarget only offers
 # `schema`, which applies a SQL file against a database that must already
-# exist) -- the target db is created directly via psql, same as this
+# exist): the target db is created directly via psql, same as this
 # section's `canary` setup above, then `pg init schema` idempotency is
 # proven by the SQL file's own `CREATE TABLE IF NOT EXISTS`, not by a
 # dbops-level flag (pg has no --if-not-exists on `init schema`).
@@ -518,13 +518,13 @@ assert_exit "pg idempotent init schema (2nd, IF NOT EXISTS no-op)" 0 "$CODE"
 
 # --- seed guard: not applicable --------------------------------------------
 # pg has no `seed` subcommand at all (src/pg/mod.rs's PgCommand has no Seed
-# variant, unlike os/mongo) -- there's nothing for this harness to test
+# variant, unlike os/mongo): there's nothing for this harness to test
 # here. Logged as a NOTE (not a FAIL/DEFECT: this is a scope gap between
 # the task spec, which asked for "3 DB seed guard" coverage, and what's
 # actually implemented, not a product bug) so it surfaces in the summary
 # rather than silently testing only 2 of 3 databases.
-note "pg has no 'seed' subcommand yet (src/pg/mod.rs::PgCommand has Init/Users/Reset but no Seed) -- \
-the seed-guard case below only covers os and mongo, not pg. If a pg seed lands later, add its guard \
+note "pg has no 'seed' subcommand yet (src/pg/mod.rs::PgCommand has Init/Users/Reset but no Seed). \
+The seed-guard case below only covers os and mongo, not pg. If a pg seed lands later, add its guard \
 case here to keep this matrix at parity with os/mongo."
 
 # =========================================================================

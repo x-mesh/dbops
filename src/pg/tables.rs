@@ -3,7 +3,7 @@
 //! approximate bloat ratio derived from `pg_stat_user_tables.n_dead_tup`.
 //!
 //! `pgstattuple` isn't assumed installed, so this is an estimate, not exact
-//! bloat -- hence the `dead_pct` column name (not `bloat_pct`).
+//! bloat; hence the `dead_pct` column name (not `bloat_pct`).
 
 use anyhow::{Context, Result};
 use tokio_postgres::Client;
@@ -97,8 +97,8 @@ async fn fetch(pg_client: &Client, top: i64) -> Result<Vec<TableRow>> {
 }
 
 /// Pure: fetched rows -> the rendered report. `dead_pct` is `-` (not
-/// `0.0%`) when a table has never been touched (`live_tup + dead_tup == 0`)
-/// -- dividing zero by zero would misrepresent "no data yet" as "no bloat".
+/// `0.0%`) when a table has never been touched (`live_tup + dead_tup == 0`).
+/// Dividing zero by zero would misrepresent "no data yet" as "no bloat".
 fn build_report(rows: &[TableRow]) -> StatReport {
     let columns = [
         "table",

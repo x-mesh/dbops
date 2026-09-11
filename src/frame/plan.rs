@@ -6,7 +6,7 @@
 //! shows first: one plan, two consumers, never two descriptions of the
 //! same operation drifting apart.
 
-// Not wired into any domain module yet -- that lands with the M3
+// Not wired into any domain module yet. That lands with the M3
 // destructive-command tasks (`init`/`reset`/`seed`), which build a
 // `PlanPreview` and hand it to `guard::authorize`. Until then this is only
 // reachable from this module's own tests. Same reasoning as

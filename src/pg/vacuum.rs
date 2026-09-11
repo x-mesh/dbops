@@ -2,7 +2,7 @@
 //! age of every user table, ranked by wraparound risk (`age(relfrozenxid)`
 //! descending) and compared against `autovacuum_freeze_max_age`.
 //!
-//! Ranking is capped at [`DEFAULT_TOP`] rather than exposed as a flag --
+//! Ranking is capped at [`DEFAULT_TOP`] rather than exposed as a flag:
 //! this command answers "what's closest to a wraparound-forced vacuum", a
 //! fixed top-N question, not an open listing like `tables --top`.
 

@@ -49,7 +49,7 @@ struct StatsData {
 
 async fn fetch(pg_client: &Client, db: Option<&str>) -> Result<StatsData> {
     // Resolved in Rust rather than via `COALESCE($1, current_database())` in
-    // SQL -- `current_database()` returns `name`, not `text`, and mixing
+    // SQL: `current_database()` returns `name`, not `text`, and mixing
     // that with a `pg_database_size(text)` overload call is exactly the kind
     // of implicit-cast ambiguity worth avoiding rather than debugging.
     let database = match db {
