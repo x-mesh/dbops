@@ -8,6 +8,8 @@ SRE/SE용 CLI. 서버에 `scp` 한 번으로 올리면 그 자리에서 `dbops p
 `health` 커맨드는 nagios 호환 exit code(0/1/2/3)를 반환해 cron·NRPE·모니터링 에이전트에
 바로 연결된다.
 
+![dbops pg, mongo, os and redis health checks each print OK, then redis health with a --critical threshold nothing can satisfy prints CRITICAL and exits 2](docs/media/health.gif)
+
 ## 빠른 시작
 
 ```bash
@@ -110,11 +112,13 @@ dbops pg health --json; echo "exit=$?"
 `http check`의 `--warning`/`--critical`은 응답 시간에만 적용된다. TLS 인증서 만료는 별도의
 고정 임계값을 쓴다 — 남은 기간 30일이면 WARNING, 7일이면 CRITICAL.
 
-### JSON 출력
+### 출력 형식
 
 `health`를 포함해 **모든** 커맨드가 `--json`을 지원한다 —
 `dbops pg tables --json | jq .`도, `dbops pg health --json`도 그대로 파싱된다. 표 출력은
 100행을 넘으면 "… N more rows"로 잘리지만, `--json`은 절대 잘리지 않는다.
+
+![dbops pg tables, os indices and redis slowlog each printing a table of results](docs/media/stats.gif)
 
 ## 설치
 
@@ -126,6 +130,8 @@ dbops pg health --json; echo "exit=$?"
 ```bash
 curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
 ```
+
+![the install.sh one-liner resolving the latest release, verifying its checksum and installing dbops, then dbops update --dry-run --json reporting up-to-date](docs/media/install.gif)
 
 | 환경변수 | 설명 | 기본값 |
 |---|---|---|
@@ -332,6 +338,8 @@ exit "$code"
 즉 CI/자동화에서 돌리려면 `--yes`가 필수고, `prod`처럼 보호된 프로파일이면 `--yes`가
 있어도 `--confirm-name`까지 정확히 맞아야 한다.
 
+![dbops os reset index printing its plan under --dry-run, then being refused in a non-interactive shell, then refused again on a protected profile for a --confirm-name that does not match, with the index still listed afterwards](docs/media/guard.gif)
+
 ## Day-0 데모 (3분)
 
 ```bash
@@ -409,3 +417,20 @@ release 프로파일(`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`, `opt
 `strip = true`)은 `strip`만 켰을 때보다 바이너리를 약 60~70% 줄인다 — 자세한 수치는
 [`docs/build-spike.md`](docs/build-spike.md) 참고. 태그(`vX.Y.Z`)를 push하면
 `.github/workflows/release.yml`이 3타깃을 각각 빌드해 GitHub Release에 첨부한다.
+
+### 데모 GIF
+
+이 README의 GIF는 손으로 녹화한 게 아니라 생성물이다. 각각
+[VHS](https://github.com/charmbracelet/vhs) tape 파일(`docs/tape/`)이고,
+`scripts/record-demos.sh`가 렌더한다:
+
+```bash
+scripts/record-demos.sh                # 전체 다시 렌더
+scripts/record-demos.sh --only health  # docs/tape/health.tape 만
+scripts/record-demos.sh --seed-only    # 픽스처만 띄우고 정지
+```
+
+tape 안의 커맨드는 실제 DB를 상대로 실행된다 — 스크립트가 테스트와 같은 docker
+compose 픽스처를 띄우고, 시드를 심고, `demo` 프로파일을 물려준다. 그래서 GIF가
+실제 출력과 어긋날 수 없다. 출력이 바뀌면 다시 렌더하면 된다. 참고로 vhs 0.12.0은
+아무 파일도 쓰지 않고 조용히 끝나므로, 스크립트가 이를 감지해 0.11.0을 안내한다.

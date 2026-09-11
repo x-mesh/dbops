@@ -9,6 +9,8 @@ no runtime, no shared libraries, and no `ca-certificates` package to install
 first. Every `health` command returns nagios-compatible exit codes (0/1/2/3),
 so it drops straight into cron, NRPE, or any monitoring agent.
 
+![dbops pg, mongo, os and redis health checks each print OK, then redis health with a --critical threshold nothing can satisfy prints CRITICAL and exits 2](docs/media/health.gif)
+
 ## Quick start
 
 ```bash
@@ -116,12 +118,14 @@ On `http check`, `--warning`/`--critical` apply to response time only. TLS
 certificate expiry has its own fixed thresholds: WARNING at 30 days left,
 CRITICAL at 7.
 
-### JSON output
+### Output formats
 
 **Every** command takes `--json`, `health` checks included — so
 `dbops pg tables --json | jq .` and `dbops pg health --json` both parse
 directly. Table output is truncated past 100 rows (with a "… N more rows"
 footer); `--json` is never truncated.
+
+![dbops pg tables, os indices and redis slowlog each printing a table of results](docs/media/stats.gif)
 
 ## Install
 
@@ -133,6 +137,8 @@ from the newest release, verifies its SHA256, and installs it as `dbops`.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
 ```
+
+![the install.sh one-liner resolving the latest release, verifying its checksum and installing dbops, then dbops update --dry-run --json reporting up-to-date](docs/media/install.gif)
 
 | Environment variable | What it sets | Default |
 |---|---|---|
@@ -357,6 +363,8 @@ In other words: `--yes` is mandatory in CI and automation, and on a protected
 profile like `prod`, `--yes` alone isn't enough — `--confirm-name` has to match
 too.
 
+![dbops os reset index printing its plan under --dry-run, then being refused in a non-interactive shell, then refused again on a protected profile for a --confirm-name that does not match, with the index still listed afterwards](docs/media/guard.gif)
+
 ## Day-0 demo (3 minutes)
 
 ```bash
@@ -445,3 +453,21 @@ The release profile (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`,
 [`docs/build-spike.md`](docs/build-spike.md). Pushing a `vX.Y.Z` tag makes
 `.github/workflows/release.yml` build all three targets and attach them to a
 GitHub Release.
+
+### Demo GIFs
+
+The GIFs in this README are generated, not recorded by hand. Each is a
+[VHS](https://github.com/charmbracelet/vhs) tape in `docs/tape/`, and
+`scripts/record-demos.sh` renders them:
+
+```bash
+scripts/record-demos.sh                # re-render every tape
+scripts/record-demos.sh --only health  # just docs/tape/health.tape
+scripts/record-demos.sh --seed-only    # bring the fixture up and stop
+```
+
+The commands in the tapes run against real databases -- the script brings up
+the same docker compose fixture the tests use, seeds it, and points a `demo`
+profile at it -- so a GIF cannot drift from what the tool actually prints.
+Re-render whenever output changes. Note that vhs 0.12.0 silently writes
+nothing; the script checks for it and points at 0.11.0.
