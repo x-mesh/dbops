@@ -1,4 +1,4 @@
-//! `dbops tcp check` — raw TCP connect check (PRD R32).
+//! `dbops tcp check`: raw TCP connect check (PRD R32).
 
 use std::time::Instant;
 

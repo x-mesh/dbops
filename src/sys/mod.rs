@@ -1,4 +1,4 @@
-//! `dbops sys check` — local host resource check (PRD R33).
+//! `dbops sys check`: local host resource check (PRD R33).
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -63,7 +63,7 @@ async fn check(ctx: &Ctx) -> Result<ExitCode> {
     Ok(ExitCode::from(exit::from_status(result.status)))
 }
 
-/// Per-mount disk usage. Metric names use `disk:<mount>` — mount points
+/// Per-mount disk usage. Metric names use `disk:<mount>`. Mount points
 /// containing spaces (rare, but possible for e.g. external volumes) will
 /// render as multiple perfdata-looking tokens in text mode; `--json`
 /// output is unaffected since it isn't space-delimited.
@@ -120,7 +120,7 @@ fn collect_memory(status: &mut CheckStatus, reasons: &mut Vec<String>, metrics: 
 /// Load average is reported as plain metrics, not turned into a pass/fail
 /// verdict: a raw load figure only means something once divided by CPU
 /// core count, and there's no single correct core-count source across
-/// containers/VMs/bare metal — that normalization is left for v2.
+/// containers/VMs/bare metal. That normalization is left for v2.
 fn collect_load_average(metrics: &mut Vec<Metric>) {
     let load = System::load_average();
     for (name, value) in [
@@ -139,7 +139,7 @@ fn collect_load_average(metrics: &mut Vec<Metric>) {
 }
 
 /// Docker container counts, best-effort and informational only (not part
-/// of `status`). Skipped silently — not an error — when `docker` isn't
+/// of `status`). Skipped silently, not an error, when `docker` isn't
 /// installed or the daemon isn't reachable, since a box without Docker is
 /// a normal environment for this tool.
 async fn collect_docker(reasons: &mut Vec<String>, metrics: &mut Vec<Metric>) {
@@ -165,7 +165,7 @@ async fn collect_docker(reasons: &mut Vec<String>, metrics: &mut Vec<Metric>) {
 }
 
 /// Runs `docker ps --format json` (newline-delimited JSON, one object per
-/// container) off the async runtime via `spawn_blocking` — tokio's
+/// container) off the async runtime via `spawn_blocking`: tokio's
 /// "process" feature isn't enabled in this workspace (Cargo.toml is out
 /// of scope for this task), so a plain `std::process::Command` is the
 /// only option, and it must not block a worker thread directly.

@@ -120,7 +120,7 @@ fn resolve_cmd(cmd: &str, timeout: Duration) -> Result<String> {
 }
 
 /// Best-effort cleanup of a timed-out secret command. Failure to kill it is
-/// not itself an error worth surfacing — the caller already has a timeout
+/// not itself an error worth surfacing. The caller already has a timeout
 /// error to report.
 #[cfg(unix)]
 fn kill_best_effort(pid: u32) {

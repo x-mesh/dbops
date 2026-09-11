@@ -5,14 +5,14 @@
 //! - **NDJSON** (one JSON document per line, the default/recommended form):
 //!   read via a `BufReader`, one line at a time, batched into 1000-document
 //!   `insertMany(ordered=false)` chunks. Memory use stays flat regardless of
-//!   file size — this is what makes multi-GB seed files safe (PRD R16 edge
+//!   file size. This is what makes multi-GB seed files safe (PRD R16 edge
 //!   case).
 //! - **JSON array** (`[ {...}, {...} ]`): a streaming array parser is more
 //!   machinery than this tool needs, so instead the file is size-capped at
 //!   [`MAX_ARRAY_BYTES`] and loaded whole. Prefer NDJSON for anything larger.
 //!
 //! `ordered=false` means one bad document doesn't abort documents after it
-//! in the same chunk — but a failure is still fail-fast at the *seed*
+//! in the same chunk, but a failure is still fail-fast at the *seed*
 //! level: the first bad line/document (whether a JSON parse error or a
 //! server-side write error) stops the whole run and is reported as "N
 //! documents inserted, then failed at line/document M: <reason>", so a
@@ -20,7 +20,7 @@
 //! edge case).
 //!
 //! Like [`super::init`], the target is planned first ([`PlanPreview`],
-//! probed for real — the source file is read once up front purely to count
+//! probed for real: the source file is read once up front purely to count
 //! documents so `--dry-run` reports an accurate estimate) and only inserted
 //! into once [`guard::authorize`] returns
 //! [`GuardDecision::Proceed`].
@@ -47,7 +47,7 @@ use crate::mongo::client;
 const CHUNK_SIZE: usize = 1000;
 
 /// JSON array seed files larger than this are rejected with a message
-/// pointing at NDJSON instead — see the module doc comment for why array
+/// pointing at NDJSON instead. See the module doc comment for why array
 /// files are loaded whole rather than streamed.
 const MAX_ARRAY_BYTES: u64 = 50 * 1024 * 1024;
 
@@ -161,7 +161,7 @@ struct SeedSource {
 }
 
 /// Detect NDJSON vs. JSON-array (first non-whitespace character `[`) and, in
-/// the same pass, count how many documents will actually be inserted — run
+/// the same pass, count how many documents will actually be inserted. Run
 /// unconditionally (even under `--dry-run`) so the plan preview reflects the
 /// real file rather than a guess.
 fn probe_source(file: &Path) -> Result<SeedSource> {
@@ -204,7 +204,7 @@ fn probe_source(file: &Path) -> Result<SeedSource> {
     // NDJSON: count non-blank lines across the rest of the file. Uses
     // `read_until` (not `lines()`/`BufRead::lines`) so a single very long or
     // non-UTF8 line can't grow unboundedly retained memory or abort the
-    // count early — this pass only needs to know where lines end, not
+    // count early. This pass only needs to know where lines end, not
     // decode them.
     let mut count: u64 = u64::from(!first_line.trim().is_empty());
     let mut buf = Vec::new();
@@ -359,7 +359,7 @@ fn parse_ndjson_line(raw_line: &str) -> ParsedLine {
 
 /// Insert one already-parsed chunk with `ordered=false` and clear it.
 /// Returns how many documents actually made it in and, if any didn't, the
-/// first failure — `entries` carries each document's original line/index so
+/// first failure. `entries` carries each document's original line/index so
 /// a `write_errors[i].index` (position within *this chunk*) maps back to the
 /// right place in the source file even when earlier lines in the same chunk
 /// were blank and never got pushed.

@@ -1,4 +1,4 @@
-//! `dbops mongo replset` — per-member replica set status as a stat table.
+//! `dbops mongo replset`: per-member replica set status as a stat table.
 
 use anyhow::{bail, Context, Result};
 use mongodb::bson::doc;

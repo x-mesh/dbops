@@ -1,4 +1,4 @@
-//! `dbops update` — replace the running binary with a published release.
+//! `dbops update`: replace the running binary with a published release.
 //!
 //! The same job `install.sh` does for the first copy, done from inside the
 //! binary: resolve the newest release for this platform, download it, check
@@ -7,7 +7,7 @@
 //!
 //! This is the one subcommand that touches no database, so it takes `&Cli`
 //! rather than a [`Ctx`](crate::frame::Ctx) and runs before profile
-//! resolution — a broken `~/.dbops.toml` is exactly the kind of moment when
+//! resolution. A broken `~/.dbops.toml` is exactly the kind of moment when
 //! being able to update anyway matters.
 
 mod apply;
@@ -43,7 +43,7 @@ pub struct UpdateArgs {
     pub force: bool,
 }
 
-/// What the run did — the field to branch on when parsing `--json` output.
+/// What the run did: the field to branch on when parsing `--json` output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum Action {
@@ -59,7 +59,7 @@ enum Action {
 struct UpdateReport {
     action: Action,
     current_version: String,
-    /// The version that was (or would be) installed — the resolved `--tag`
+    /// The version that was (or would be) installed: the resolved `--tag`
     /// when one was given, which is not necessarily the newest release.
     target_version: String,
     /// Strictly "the resolved release is newer than the running binary".
@@ -162,7 +162,7 @@ pub async fn run(args: &UpdateArgs, cli: &Cli) -> Result<ExitCode> {
 /// An explicit `--tag` (`pinned`) is a pin, not a suggestion: it installs
 /// exactly what it names, a deliberate downgrade included, and only an
 /// *identical* version is a no-op. Without one, the only release worth
-/// installing is a strictly newer one — which also means a locally built
+/// installing is a strictly newer one, which also means a locally built
 /// binary ahead of the newest release is left alone. `--force` overrides
 /// both, so `dbops update --force` always re-fetches.
 fn should_install(
@@ -253,7 +253,7 @@ mod tests {
         assert!(!should_install(&v("0.2.0"), &v("0.2.0"), true, false));
     }
 
-    /// `--force` is what re-fetches a version you already have — the only
+    /// `--force` is what re-fetches a version you already have: the only
     /// way to repair a corrupted install without changing versions.
     #[test]
     fn force_reinstalls_the_version_already_running() {

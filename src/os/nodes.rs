@@ -1,11 +1,11 @@
-//! `dbops os nodes` — combines `GET _cat/nodes` (node identity: name, role,
+//! `dbops os nodes`: combines `GET _cat/nodes` (node identity: name, role,
 //! elected cluster-manager) with `GET _nodes/stats/fs,jvm` (byte-exact disk
 //! and heap usage) into one [`StatReport`].
 //!
 //! Disk usage is compared against the well-known OpenSearch/Elasticsearch
 //! default watermark percentages (`cluster.routing.allocation.disk.watermark.*`:
 //! low 85%, high 90%, flood-stage 95%). These are **not** read from
-//! `_cluster/settings` — a cluster running with custom watermarks will be
+//! `_cluster/settings`. A cluster running with custom watermarks will be
 //! compared against the defaults, not its actual configured values. Known
 //! limitation, documented here rather than silently wrong.
 

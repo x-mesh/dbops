@@ -17,8 +17,8 @@ const MAX_TABLE_ROWS: usize = 100;
 /// Render a single check outcome.
 ///
 /// `domain`/`command` (e.g. `"pg"`/`"health"`) are not part of [`CheckResult`]
-/// itself — that type stays domain-agnostic so it serializes identically
-/// across every check in the toolkit — but the nagios text line needs them
+/// itself. That type stays domain-agnostic so it serializes identically
+/// across every check in the toolkit, but the nagios text line needs them
 /// as its `<DOMAIN> <COMMAND> ...` prefix, so callers pass them in here.
 #[allow(dead_code)] // consumed by domain modules once they stop being stubs
 pub fn render_check(domain: &str, command: &str, result: &CheckResult, json: bool) -> String {
@@ -53,7 +53,7 @@ fn render_check_text(domain: &str, command: &str, result: &CheckResult, tty: boo
     line
 }
 
-/// `name=value<unit>;<warn>;<crit>` — the check_postgres/nagios perfdata
+/// `name=value<unit>;<warn>;<crit>`: the check_postgres/nagios perfdata
 /// convention. Missing unit/warn/crit render as an empty field, not `"0"`
 /// or `"None"`, matching what nagios plugins emit.
 fn render_metric(m: &Metric) -> String {
@@ -137,7 +137,7 @@ fn render_stat_table(report: &StatReport, tty: bool) -> String {
 
 /// Escape newlines/tabs/other control characters so a value can never break
 /// a nagios text line or split a table row across lines. `--json` output
-/// bypasses this entirely — serde_json already encodes control characters
+/// bypasses this entirely: serde_json already encodes control characters
 /// correctly for JSON strings.
 fn escape_control_chars(input: &str) -> String {
     let mut out = String::with_capacity(input.len());

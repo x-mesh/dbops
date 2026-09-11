@@ -1,4 +1,4 @@
-//! `dbops mongo health` — ping + `replSetGetStatus` summary.
+//! `dbops mongo health`: ping + `replSetGetStatus` summary.
 //!
 //! Decision table (PRD edge cases):
 //! - standalone (no replica set): `ping` OK alone -> OK, summary says so.
@@ -70,8 +70,8 @@ enum ReplStatusOutcome {
     ReplicaSet(Document),
 }
 
-/// Run the probe and turn every outcome — success, standalone, or any
-/// failure short of a malformed CLI flag — into a [`CheckResult`]. Never
+/// Run the probe and turn every outcome (success, standalone, or any
+/// failure short of a malformed CLI flag) into a [`CheckResult`]. Never
 /// returns `Err`: a connect/ping/timeout failure is itself a reportable
 /// UNKNOWN result, not a process-level error.
 async fn check(ctx: &Ctx, warning: Option<i64>, critical: Option<i64>) -> CheckResult {

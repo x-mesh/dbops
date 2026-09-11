@@ -5,7 +5,7 @@
 //! (`/repos/{repo}/releases/assets/{id}` with `Accept:
 //! application/octet-stream`) rather than through each asset's
 //! `browser_download_url`. That is the only form that works for a private
-//! repository, and it works unauthenticated for a public one too — so there
+//! repository, and it works unauthenticated for a public one too, so there
 //! is exactly one download path to reason about.
 
 use std::time::Duration;
@@ -16,8 +16,8 @@ use reqwest::StatusCode;
 use serde::Deserialize;
 
 /// `owner/name` releases are published to. Overridable via
-/// `DBOPS_UPDATE_REPO` so a fork — or a staging repo used to rehearse a
-/// release — can be exercised without a rebuild.
+/// `DBOPS_UPDATE_REPO` so a fork, or a staging repo used to rehearse a
+/// release, can be exercised without a rebuild.
 const DEFAULT_REPO: &str = "x-mesh/dbops";
 const API_BASE: &str = "https://api.github.com";
 const REPO_ENV_VAR: &str = "DBOPS_UPDATE_REPO";
@@ -45,7 +45,7 @@ pub struct Release {
 #[derive(Debug, Deserialize)]
 pub struct Asset {
     pub name: String,
-    /// The assets-API URL, *not* `browser_download_url` — see module docs.
+    /// The assets-API URL, *not* `browser_download_url`. See module docs.
     url: String,
 }
 
@@ -54,7 +54,7 @@ impl Release {
         self.assets.iter().find(|asset| asset.name == name)
     }
 
-    /// Every asset name, for the "release X has no asset Y" error message —
+    /// Every asset name, for the "release X has no asset Y" error message:
     /// a missing artifact is almost always a half-finished release, and
     /// seeing what *did* upload is what tells you that.
     pub fn asset_names(&self) -> Vec<&str> {
@@ -166,8 +166,8 @@ impl Client {
     /// Turn the HTTP failures that actually happen here into the sentence
     /// that resolves each one.
     ///
-    /// Unlike `install.sh`, this never shells out to `gh` for a token — a
-    /// static binary on a server has no `gh` — so where a token would help,
+    /// Unlike `install.sh`, this never shells out to `gh` for a token: a
+    /// static binary on a server has no `gh`. So where a token would help,
     /// the message names the command that mints one.
     fn explain(&self, status: StatusCode, url: &str) -> String {
         let repo = &self.repo;
@@ -198,7 +198,7 @@ impl Client {
 /// First non-blank value among [`TOKEN_ENV_VARS`].
 ///
 /// `lookup` is injected rather than reading `std::env` directly so the
-/// precedence order is testable without mutating global process state — the
+/// precedence order is testable without mutating global process state, the
 /// same reason `frame::config::resolve` takes an env snapshot.
 fn pick_token<F: Fn(&str) -> Option<String>>(lookup: F) -> Option<String> {
     TOKEN_ENV_VARS

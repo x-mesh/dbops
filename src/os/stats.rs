@@ -1,4 +1,4 @@
-//! `dbops os stats [--index <pattern>]` — wraps `GET <pattern|_all>/_stats`.
+//! `dbops os stats [--index <pattern>]`: wraps `GET <pattern|_all>/_stats`.
 //!
 //! `docs.count` is read from each index's `primaries` block (replicas would
 //! otherwise double-count documents); `store.size`/`indexing.index_total`/

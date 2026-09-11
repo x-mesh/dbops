@@ -44,7 +44,7 @@ pub enum MongoCommand {
         /// Target collection: "db.collection", or a bare collection name paired with --db
         #[arg(long)]
         collection: String,
-        /// Target database — required when --collection is a bare name (no ".")
+        /// Target database, required when --collection is a bare name (no ".")
         #[arg(long)]
         db: Option<String>,
         /// NDJSON file (one JSON document per line), or a JSON array under 50MB
@@ -70,7 +70,7 @@ pub enum MongoInitTarget {
         role: String,
         #[arg(long)]
         db: String,
-        /// Visible via `ps`/shell history — prefer the DBOPS_NEW_USER_PASSWORD env var
+        /// Visible via `ps`/shell history. Prefer the DBOPS_NEW_USER_PASSWORD env var
         #[arg(long)]
         password: Option<String>,
         /// Treat an already-existing user as success instead of failing

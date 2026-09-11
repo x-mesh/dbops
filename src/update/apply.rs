@@ -51,7 +51,7 @@ pub fn expected_digest(sums: &str, asset: &str) -> Result<String> {
 ///
 /// This catches a truncated or corrupted download; it is not a signature.
 /// `SHA256SUMS` ships inside the same release as the binary, so anyone who
-/// could tamper with one could tamper with the other — HTTPS to
+/// could tamper with one could tamper with the other. HTTPS to
 /// api.github.com is what establishes the release's authenticity.
 pub fn verify_checksum(bytes: &[u8], sums: &str, asset: &str) -> Result<String> {
     let expected = expected_digest(sums, asset)?;
@@ -62,7 +62,7 @@ pub fn verify_checksum(bytes: &[u8], sums: &str, asset: &str) -> Result<String> 
     Ok(actual)
 }
 
-/// Absolute, symlink-resolved path of the running binary — the file
+/// Absolute, symlink-resolved path of the running binary: the file
 /// [`replace_binary`] will overwrite.
 ///
 /// Resolving the symlink matters: a `~/.local/bin/dbops` that points into a

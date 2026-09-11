@@ -3,7 +3,7 @@
 //! is the only module that decides *whether* a plan gets applied; this one
 //! only knows how to describe *what* it would do, and renders that preview
 //! identically for `--dry-run` and for the confirmation prompt a real run
-//! shows first — one plan, two consumers, never two descriptions of the
+//! shows first: one plan, two consumers, never two descriptions of the
 //! same operation drifting apart.
 
 // Not wired into any domain module yet -- that lands with the M3
@@ -82,7 +82,7 @@ impl PlanPreview {
     /// plan against a protected profile.
     ///
     /// `None` when the plan is empty or touches more than one distinct
-    /// target — an ambiguous plan can never be name-confirmed, so
+    /// target. An ambiguous plan can never be name-confirmed, so
     /// [`crate::frame::guard::authorize`] always declines it for protected
     /// profiles rather than guess which target the operator meant.
     pub fn confirm_target(&self) -> Option<&str> {

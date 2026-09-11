@@ -1,21 +1,21 @@
 //! `dbops mongo init db|user` and `dbops mongo reset db`.
 //!
-//! MongoDB has no explicit "create database" primitive — a database exists
+//! MongoDB has no explicit "create database" primitive: a database exists
 //! once it holds at least one collection, and disappears once its last
 //! collection is dropped. `init db` therefore probes `listDatabaseNames`
 //! first: if the name is already present this is a no-op (exit 0,
-//! idempotent by construction — no `--if-not-exists` flag needed); otherwise
+//! idempotent by construction: no `--if-not-exists` flag needed); otherwise
 //! it materializes the database by creating a placeholder `_dbops_init`
 //! collection. `reset db` is the mirror image: `dropDatabase` deletes every
-//! collection in it, which *is* mongo's version of "wipe and reinitialize" —
-//! there is nothing left to recreate afterward, since the next write (or the
+//! collection in it, which *is* mongo's version of "wipe and reinitialize".
+//! There is nothing left to recreate afterward, since the next write (or the
 //! next `mongo init db`) brings the database back implicitly. Both facts are
 //! called out in the commands' own output so an operator used to a
 //! create/drop/recreate cycle (e.g. postgres) isn't surprised.
 //!
 //! Every mutation here is planned first ([`PlanPreview`]) from a live probe
-//! of the target — run unconditionally, `--dry-run` or not, so the preview
-//! reflects real state — and only applied once [`guard::authorize`] returns
+//! of the target (run unconditionally, `--dry-run` or not, so the preview
+//! reflects real state) and only applied once [`guard::authorize`] returns
 //! [`GuardDecision::Proceed`]; see that module's doc comment for the exact
 //! decision table (dry-run / non-interactive / protected-profile rules).
 
@@ -149,7 +149,7 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
         };
 
     // A mistyped target must never fall through to "nothing planned, exit
-    // 0" — that would make a typo silently a no-op instead of a caught
+    // 0". That would make a typo silently a no-op instead of a caught
     // mistake. It's reported as a hard error, before any plan/guard step.
     let Some(probe) = probe else {
         eprintln!(
@@ -207,7 +207,7 @@ struct ResetProbe {
     documents: u64,
 }
 
-/// `None` when the database doesn't exist — [`run_reset_db`] treats that as
+/// `None` when the database doesn't exist. [`run_reset_db`] treats that as
 /// a hard error rather than a silent no-op.
 async fn probe_reset_target(mongo_client: &Client, name: &str) -> Result<Option<ResetProbe>> {
     if !database_exists(mongo_client, name).await? {
@@ -321,7 +321,7 @@ pub async fn run_init_user(
 }
 
 /// `--password` (with a stderr warning about argv/shell-history exposure) or
-/// the [`PASSWORD_ENV_VAR`] env var — never a bare default, since a missing
+/// the [`PASSWORD_ENV_VAR`] env var, never a bare default, since a missing
 /// password must fail loudly rather than create a user nobody can predict
 /// the credentials for.
 fn resolve_password(flag: Option<&str>) -> Result<String> {
@@ -351,7 +351,7 @@ async fn user_exists(mongo_client: &Client, db_name: &str, user_name: &str) -> R
 
 // --- shared helpers ----------------------------------------------------------
 
-/// Tolerates `Int32`, `Int64`, or `Double` wire representations — `dbStats`
+/// Tolerates `Int32`, `Int64`, or `Double` wire representations: `dbStats`
 /// field types vary by MongoDB version (matches [`crate::mongo::stats`]'s
 /// and [`crate::mongo::connections`]'s parsing convention).
 fn bson_i64(doc: &Document, key: &str) -> Option<i64> {
@@ -405,8 +405,8 @@ mod tests {
     // Both cases below share the single `PASSWORD_ENV_VAR` name and mutate
     // real process env state, which Rust's default parallel test runner
     // would race on if they were split into two `#[test]` fns (unlike
-    // `frame::secret`'s env tests, which each own a unique var name) —
-    // kept as one test so the set/assert/remove sequence never interleaves
+    // `frame::secret`'s env tests, which each own a unique var name).
+    // Kept as one test so the set/assert/remove sequence never interleaves
     // with another thread's env mutation.
     #[test]
     fn resolve_password_env_var_fallback_and_missing_cases() {

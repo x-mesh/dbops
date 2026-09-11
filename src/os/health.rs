@@ -1,4 +1,4 @@
-//! `dbops os health` — wraps `GET _cluster/health`.
+//! `dbops os health`: wraps `GET _cluster/health`.
 //!
 //! Status mapping (PRD): `green` -> OK, `yellow` -> WARNING, `red` ->
 //! CRITICAL. Any transport failure or a response that doesn't arrive within
@@ -6,8 +6,8 @@
 //! (`from_status(Unknown) == 3`, checked in `frame::exit`).
 //!
 //! `--warning`/`--critical` design decision: the PRD leaves the exact metric
-//! up to this task. This check applies both thresholds to `unassigned_shards`
-//! — of the five metrics OpenSearch reports, it's the most direct signal of
+//! up to this task. This check applies both thresholds to `unassigned_shards`.
+//! Of the five metrics OpenSearch reports, it's the most direct signal of
 //! an actual data-availability problem (unlike `pending_tasks`, which is
 //! often just transient cluster-manager churn). A threshold breach only ever
 //! *escalates* the color-derived status (via [`worse`]), never downgrades a
@@ -180,7 +180,7 @@ fn build_result(
 }
 
 /// The worse (higher-severity) of two statuses, `Ok < Warning < Critical`.
-/// Only ever called with color-derived statuses on both sides — `Unknown`
+/// Only ever called with color-derived statuses on both sides. `Unknown`
 /// is produced solely by early-return paths in [`health`] that never reach
 /// here, so it has no defined rank in this ordering.
 fn worse(a: CheckStatus, b: CheckStatus) -> CheckStatus {

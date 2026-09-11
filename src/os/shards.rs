@@ -1,9 +1,9 @@
-//! `dbops os shards` — wraps `GET _cat/shards?format=json`.
+//! `dbops os shards`: wraps `GET _cat/shards?format=json`.
 //!
 //! Renders two separate tables rather than one: a shard-granularity list of
-//! everything currently `UNASSIGNED` (the actionable signal — data at risk
+//! everything currently `UNASSIGNED` (the actionable signal: data at risk
 //! or actively recovering) and a node-granularity shard-count distribution
-//! (the imbalance signal — one node quietly holding far more shards than
+//! (the imbalance signal: one node quietly holding far more shards than
 //! its peers). The two have different row shapes (per-shard vs per-node),
 //! so folding them into one table would force one of them into columns
 //! that don't apply to it. `mod::run` prints the unassigned table first,

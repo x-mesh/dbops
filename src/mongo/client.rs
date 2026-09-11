@@ -13,8 +13,8 @@ use crate::frame::config::MongoProfile;
 
 /// Build a `mongodb::Client` from a resolved profile.
 ///
-/// This does not itself perform any network I/O — the driver connects
-/// lazily on the first operation — so callers that need a hard wall-clock
+/// This does not itself perform any network I/O: the driver connects
+/// lazily on the first operation, so callers that need a hard wall-clock
 /// bound on the *first* command (ping, `replSetGetStatus`, ...) should wrap
 /// that call in `tokio::time::timeout` themselves. `timeout` is still worth
 /// passing here: it becomes `server_selection_timeout`, which bounds how
@@ -34,7 +34,7 @@ pub async fn connect(profile: &MongoProfile, timeout: Duration, insecure: bool) 
 
     // `--insecure` only relaxes certificate verification on a connection
     // that already requested TLS (via `tls=true`/`mongodb+srv://` in the
-    // URI) — it must never turn TLS on for a URI that didn't ask for it.
+    // URI). It must never turn TLS on for a URI that didn't ask for it.
     if insecure {
         if let Some(Tls::Enabled(tls_opts)) = options.tls.as_mut() {
             tls_opts.allow_invalid_certificates = Some(true);

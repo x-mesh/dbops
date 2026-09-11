@@ -1,4 +1,4 @@
-//! `dbops mongo oplog` — the oplog window (time between the oldest and
+//! `dbops mongo oplog`: the oplog window (time between the oldest and
 //! newest entries in `local.oplog.rs`) plus its capped-collection
 //! size/usage.
 //!

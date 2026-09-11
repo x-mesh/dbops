@@ -40,7 +40,7 @@ fn read_tlv(buf: &[u8]) -> Option<(u8, &[u8], &[u8])> {
 
 /// Extract the certificate's `notAfter` timestamp (as Unix seconds) from a
 /// DER-encoded leaf certificate. Returns `None` on anything unexpected
-/// rather than guessing — callers treat a `None` as "cert expiry
+/// rather than guessing. Callers treat a `None` as "cert expiry
 /// unavailable", not as a hard failure of the surrounding `http check`.
 pub fn parse_not_after(der: &[u8]) -> Option<i64> {
     let (tag, cert_content, _) = read_tlv(der)?;

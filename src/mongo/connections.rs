@@ -1,4 +1,4 @@
-//! `dbops mongo connections` — `serverStatus().connections`: current,
+//! `dbops mongo connections`. `serverStatus().connections`: current,
 //! available, totalCreated, and `active` when the server reports it (added
 //! in MongoDB 4.0+; older servers simply omit the field).
 

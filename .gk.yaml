@@ -1,4 +1,4 @@
-# .gk.yaml — gk 프로젝트 설정 (팀 공유)
+# .gk.yaml: gk 프로젝트 설정 (팀 공유)
 base_branch: main
 branch:
     protected:

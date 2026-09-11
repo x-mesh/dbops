@@ -122,7 +122,7 @@ async fn run(
 #[derive(Debug, Clone, PartialEq)]
 enum Replication {
     /// `lag_seconds` is the worst `replay_lag` across `connected_standbys`
-    /// rows in `pg_stat_replication`. It is `None` — not `0` — whenever no
+    /// rows in `pg_stat_replication`. It is `None`, not `0`, whenever no
     /// standby has outstanding WAL to replay: `replay_lag` is `NULL` until
     /// there is un-replayed WAL, so a fully caught-up (or briefly idle)
     /// replica reports no measurable lag even while streaming.

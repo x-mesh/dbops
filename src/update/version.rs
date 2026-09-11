@@ -66,7 +66,7 @@ impl PartialOrd for Version {
     }
 }
 
-/// Always three components, `v`-less — which is exactly the spelling the
+/// Always three components, `v`-less, which is exactly the spelling the
 /// release artifacts use in their file names.
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

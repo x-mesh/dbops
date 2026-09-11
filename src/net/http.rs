@@ -1,8 +1,8 @@
-//! `dbops http check` — HTTP(S) endpoint check (PRD R31).
+//! `dbops http check`: HTTP(S) endpoint check (PRD R31).
 //!
 //! Only the response status and headers are inspected; the body is never
 //! read (no `.text()`/`.bytes()` call), so there's nothing that needs an
-//! explicit byte-size cap — reqwest doesn't download a response body until
+//! explicit byte-size cap: reqwest doesn't download a response body until
 //! something asks for it, and we never ask.
 
 use std::time::{Duration, Instant};
@@ -198,7 +198,7 @@ fn classify_status(status: reqwest::StatusCode, expect: Option<u16>) -> (CheckSt
 
 /// Raises `current` to `candidate` only if `candidate` is more severe.
 /// `CheckStatus` has no `Ord` impl (frame/result.rs is out of scope for
-/// this task), so this is a small local severity order instead — distinct
+/// this task), so this is a small local severity order instead, distinct
 /// from `frame::exit::from_status`'s nagios *exit code* numbering, which
 /// isn't a severity ranking.
 fn escalate(current: CheckStatus, candidate: CheckStatus) -> CheckStatus {

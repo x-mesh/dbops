@@ -4,7 +4,7 @@
 //! Backed by an optional TOML file (`~/.dbops.toml` by default, or an
 //! explicit path) holding named connection profiles plus a `[safety]` list
 //! of profile names that destructive commands should refuse to touch
-//! without extra confirmation. A missing config file is not an error —
+//! without extra confirmation. A missing config file is not an error:
 //! every field can also come from an env var or (eventually) a CLI flag.
 
 // `resolve()` isn't threaded into `main.rs`/`Ctx` yet -- that lands with the
@@ -50,7 +50,7 @@ mod env_keys {
 pub struct ResolvedProfile {
     pub name: String,
     /// `true` if `name` is listed under `[safety] protected_profiles` in
-    /// the config file — destructive domain commands should use this to
+    /// the config file. Destructive domain commands should use this to
     /// require extra confirmation.
     pub protected: bool,
     pub opensearch: OpenSearchProfile,
@@ -256,9 +256,9 @@ pub fn resolve(
 }
 
 /// Priority merge for a single field: CLI flag, then env var, then config
-/// file value. `flag` is `None` at every call site in [`resolve`] today —
+/// file value. `flag` is `None` at every call site in [`resolve`] today:
 /// the global `Cli` struct (`frame::cli::Cli`) doesn't expose per-database
-/// flags yet — but every field already merges through this function, so
+/// flags yet. But every field already merges through this function, so
 /// wiring up a real flag later is a one-line change at the call site, not a
 /// redesign of the merge order.
 fn pick<'a>(

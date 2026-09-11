@@ -11,8 +11,8 @@
 //! to `reqwest`'s `rustls` feature, which forces the `aws-lc-rs` crypto
 //! backend this workspace deliberately avoids everywhere (musl cross-build
 //! regression). One consequence, confirmed by reading opensearch-rs 2.4.0's
-//! source directly: `opensearch::cert::CertificateValidation` — the type
-//! that lets a caller disable certificate verification — only exists behind
+//! source directly: `opensearch::cert::CertificateValidation`, the type
+//! that lets a caller disable certificate verification, only exists behind
 //! `#[cfg(any(feature = "native-tls", feature = "rustls-tls"))]`, and
 //! `TransportBuilder::build()` only *reads* a configured `cert_validation`
 //! value inside that same `#[cfg]` block. With neither feature enabled,
@@ -21,7 +21,7 @@
 //!
 //! `https://` hosts still work (feature unification means the shared
 //! `reqwest` TLS connector this workspace already builds in via its own
-//! `rustls-no-provider` edge is available to opensearch's HTTP client too —
+//! `rustls-no-provider` edge is available to opensearch's HTTP client too;
 //! see the "Deviation 2" note in `docs/build-spike.md`), just always with
 //! full, default certificate validation. `connect` therefore rejects
 //! `--insecure` against any `https://` host up front with an explicit error
@@ -43,7 +43,7 @@ use crate::frame::config::OpenSearchProfile;
 /// Round-robins across every configured host.
 ///
 /// opensearch-rs 2.4 only ships [`opensearch::http::transport::SingleNodeConnectionPool`]
-/// out of the box — no multi-node pool — which doesn't fit the 3-node
+/// out of the box, no multi-node pool, which doesn't fit the 3-node
 /// cluster this toolkit targets. This fills that gap. It does not probe
 /// liveness: a request against a downed node still fails (the caller sees
 /// that failure), it just rotates to a different host on the *next* call,
@@ -75,8 +75,8 @@ impl ConnectionPool for RoundRobinConnectionPool {
 }
 
 /// Build a connected [`opensearch::OpenSearch`] client from a resolved
-/// profile. Building the client never itself makes a network call —
-/// `TransportBuilder::build()` only constructs a `reqwest::Client` — so a
+/// profile. Building the client never itself makes a network call.
+/// `TransportBuilder::build()` only constructs a `reqwest::Client`, so a
 /// bad host is only discovered once the caller sends a request. `timeout`
 /// is set on the underlying HTTP client as a defense-in-depth default;
 /// callers making individual requests should still wrap `.send()` in

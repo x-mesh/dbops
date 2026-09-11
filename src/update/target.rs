@@ -15,7 +15,7 @@ pub const CHECKSUM_ASSET: &str = "SHA256SUMS";
 /// Keyed on OS + arch rather than on this binary's own compile-time target
 /// triple, on purpose: a locally built `x86_64-unknown-linux-gnu` dbops has
 /// no matching artifact, and should update itself from the statically linked
-/// musl one — which runs on a glibc host just as well.
+/// musl one, which runs on a glibc host just as well.
 pub fn asset_target(os: &str, arch: &str) -> Result<&'static str> {
     match (os, arch) {
         ("macos", "aarch64") => Ok(DARWIN_ARM64),
@@ -37,7 +37,7 @@ pub fn host_target() -> Result<&'static str> {
 }
 
 /// Must stay identical to the artifact naming in `scripts/release-build.sh`'s
-/// `package()` — that script writes the files this function looks up.
+/// `package()`. That script writes the files this function looks up.
 pub fn asset_name(version: &str, target: &str) -> String {
     format!("dbops-{version}-{target}")
 }

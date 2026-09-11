@@ -1,7 +1,7 @@
 //! The single gate every destructive command (M3's `init`/`reset`/`seed`
 //! subcommands) must pass through before mutating anything.
 //!
-//! `--dry-run` and a real run share the exact same [`PlanPreview`] — a
+//! `--dry-run` and a real run share the exact same [`PlanPreview`]. A
 //! caller builds one plan, hands it to [`authorize`], and only calls its
 //! own `apply()` when the result is [`GuardDecision::Proceed`]. A
 //! [`GuardDecision::Declined`] must never be followed by any side effect.
@@ -19,7 +19,7 @@ use dialoguer::{Confirm, Input};
 use crate::frame::ctx::Ctx;
 use crate::frame::plan::PlanPreview;
 
-/// Outcome of [`authorize`]. The caller — never this module — decides what
+/// Outcome of [`authorize`]. The caller, never this module, decides what
 /// to do next: `Proceed` calls `apply()`; `DryRun` and `Declined` both
 /// return without ever calling it (`DryRun` maps to exit 0, `Declined` to
 /// [`crate::frame::exit::unix::CONFIRMATION_DECLINED`]).
@@ -33,21 +33,21 @@ pub enum GuardDecision {
 /// Decide whether a destructive plan may run.
 ///
 /// `confirm_name` is the destructive subcommand's local `--confirm-name`
-/// flag value — there is no global flag for this (the global `Cli` is
+/// flag value. There is no global flag for this (the global `Cli` is
 /// frozen), so every M3 subcommand that can touch a protected profile adds
 /// its own and threads it through here. It's only consulted when
 /// [`Ctx::profile`] is
 /// [`protected`](crate::frame::config::ResolvedProfile::protected).
 ///
 /// Rule order (first match wins):
-/// 1. `ctx.dry_run` — render the plan, return `DryRun` without asking anything.
-/// 2. Non-interactive (`stdin` is not a TTY) and `!ctx.yes` — refuse outright.
-/// 3. Protected profile — `confirm_name` must equal
+/// 1. `ctx.dry_run`: render the plan, return `DryRun` without asking anything.
+/// 2. Non-interactive (`stdin` is not a TTY) and `!ctx.yes`: refuse outright.
+/// 3. Protected profile: `confirm_name` must equal
 ///    [`PlanPreview::confirm_target`]. Non-interactively, any mismatch (or
 ///    missing flag) is a hard `Declined`; interactively, the operator gets
 ///    a chance to type the name at a prompt instead.
-/// 4. Interactive and `!ctx.yes` — one last "really do this?" prompt.
-/// 5. Otherwise — `Proceed`.
+/// 4. Interactive and `!ctx.yes`: one last "really do this?" prompt.
+/// 5. Otherwise: `Proceed`.
 pub fn authorize(
     ctx: &Ctx,
     plan: &PlanPreview,

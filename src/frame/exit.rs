@@ -8,7 +8,7 @@ use crate::frame::result::CheckStatus;
 /// Nagios/check_postgres plugin exit codes.
 ///
 /// This mapping is a public contract every nagios-compatible monitoring
-/// system relies on (0=ok, 1=warning, 2=critical, 3=unknown) — the numbers
+/// system relies on (0=ok, 1=warning, 2=critical, 3=unknown). The numbers
 /// themselves must never change, only what maps to them.
 #[allow(dead_code)] // consumed by domain modules once they stop being stubs
 pub fn from_status(status: CheckStatus) -> u8 {

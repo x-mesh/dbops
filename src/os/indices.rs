@@ -1,7 +1,7 @@
-//! `dbops os indices` — wraps `GET _cat/indices?format=json&bytes=b`.
+//! `dbops os indices`: wraps `GET _cat/indices?format=json&bytes=b`.
 //!
 //! System indices (names starting with `.`, e.g. `.opendistro_security` /
-//! `.kibana`) are excluded by default — they're operational plumbing, not
+//! `.kibana`) are excluded by default. They're operational plumbing, not
 //! data an SRE is usually checking on. `--all` includes them.
 //!
 //! `bytes=b` requests raw byte counts from the server (rather than
