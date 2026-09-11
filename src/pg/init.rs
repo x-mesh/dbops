@@ -81,7 +81,7 @@ pub async fn run_schema(
         None => "target table count unavailable".to_string(),
     };
     let detail = format!(
-        "{} statement{} from {} — {target_note}; {mode_note}",
+        "{} statement{} from {}: {target_note}; {mode_note}",
         statements.len(),
         if statements.len() == 1 { "" } else { "s" },
         file.display(),

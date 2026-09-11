@@ -375,8 +375,8 @@ fn permission_warning(path: &Path) -> Option<String> {
     let mode = meta.permissions().mode() & 0o777;
     if mode & 0o077 != 0 {
         Some(format!(
-            "config file {} is readable/writable by group or other (mode {mode:o}); it may contain secrets \
-             — run `chmod 600 {}`",
+            "config file {} is readable/writable by group or other (mode {mode:o}); it may contain secrets; \
+             run `chmod 600 {}`",
             path.display(),
             path.display()
         ))

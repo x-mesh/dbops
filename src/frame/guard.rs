@@ -78,7 +78,7 @@ pub fn authorize(
             Verdict::Proceed => return Ok(GuardDecision::Proceed),
             Verdict::DeclinedNonInteractive => {
                 eprintln!(
-                    "error: confirmation required — re-run with --yes in a non-interactive session, \
+                    "error: confirmation required. Re-run with --yes in a non-interactive session, \
                      or run this command from a terminal"
                 );
                 return Ok(GuardDecision::Declined);
@@ -93,7 +93,7 @@ pub fn authorize(
             }
             Verdict::NeedsNameConfirmation => {
                 eprintln!(
-                    "profile '{}' is protected — type its name to continue",
+                    "profile '{}' is protected; type its name to continue",
                     ctx.profile.name
                 );
                 let typed: String = Input::new()

@@ -2,7 +2,7 @@
 name = "dbops"
 version = "0.1.1"
 edition = "2021"
-description = "Dependency-free static binary that health-checks and initializes OpenSearch, MongoDB, PostgreSQL and Redis, with nagios-compatible exit codes"
+description = "Health-checks and initializes OpenSearch, MongoDB, PostgreSQL and Redis from one static binary you scp onto a host, with nagios-compatible exit codes"
 license = "MIT"
 repository = "https://github.com/x-mesh/dbops"
 readme = "README.md"
@@ -20,7 +20,7 @@ clap = { version = "4.6.1", features = ["derive"] }
 # script from the same `Cli` clap::Command the rest of the binary runs, so
 # it can never drift from the real subcommand/flag surface.
 clap_complete = "4.6"
-# "time"/"net" are first-party needs (per-call timeouts, tcp check) — declared
+# "time"/"net" are first-party needs (per-call timeouts, tcp check), declared
 # here instead of leaning on feature unification from mongodb/reqwest.
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"] }
 

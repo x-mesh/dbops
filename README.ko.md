@@ -4,7 +4,7 @@
 
 의존성 없는 단일 정적 바이너리로 OpenSearch/MongoDB/PostgreSQL/Redis를 점검·초기화하는
 SRE/SE용 CLI. 서버에 `scp` 한 번으로 올리면 그 자리에서 `dbops pg health` 같은 점검이
-끝난다 — 별도 런타임도, 공유 라이브러리도, `ca-certificates` 패키지 설치도 필요 없다.
+끝난다. 별도 런타임도, 공유 라이브러리도, `ca-certificates` 패키지 설치도 필요 없다.
 `health` 커맨드는 nagios 호환 exit code(0/1/2/3)를 반환해 cron·NRPE·모니터링 에이전트에
 바로 연결된다.
 
@@ -74,7 +74,7 @@ dbops pg health --json; echo "exit=$?"
 
 `pg init schema`는 파일 전체를 하나의 트랜잭션으로 실행하므로, 중간에 실패하면 전부
 롤백된다. 예외는 트랜잭션 안에서 실행할 수 없는 구문(예: `CREATE INDEX CONCURRENTLY`)이
-들어 있는 경우다 — 이를 미리 감지해 구문을 하나씩 실행하고, 실패는 롤백 대신 몇 번째
+들어 있는 경우다. 이때는 미리 감지해서 구문을 하나씩 실행하고, 실패는 롤백 대신 몇 번째
 구문에서 났는지로 보고한다.
 
 ### redis
@@ -110,11 +110,11 @@ dbops pg health --json; echo "exit=$?"
 | `http check`, `tcp check` | 응답/접속 시간 초(seconds) |
 
 `http check`의 `--warning`/`--critical`은 응답 시간에만 적용된다. TLS 인증서 만료는 별도의
-고정 임계값을 쓴다 — 남은 기간 30일이면 WARNING, 7일이면 CRITICAL.
+고정 임계값을 쓴다. 남은 기간 30일이면 WARNING, 7일이면 CRITICAL이다.
 
 ### 출력 형식
 
-`health`를 포함해 **모든** 커맨드가 `--json`을 지원한다 —
+`health`를 포함해 모든 커맨드가 `--json`을 지원한다.
 `dbops pg tables --json | jq .`도, `dbops pg health --json`도 그대로 파싱된다. 표 출력은
 100행을 넘으면 "… N more rows"로 잘리지만, `--json`은 절대 잘리지 않는다.
 
@@ -143,7 +143,7 @@ curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
 sha256 도구는 `sha256sum`/`shasum`/`openssl` 중 있는 걸 쓴다.
 
 공개 저장소에서는 토큰이 필요 없다. 미인증 GitHub API 제한(IP당 시간당 60회)에 걸리거나
-private 포크에서 설치할 때만 토큰을 준다 — 스크립트는 `DBOPS_GITHUB_TOKEN` →
+private 포크에서 설치할 때만 토큰을 준다. 스크립트는 `DBOPS_GITHUB_TOKEN` →
 `GITHUB_TOKEN` → `GH_TOKEN` 순으로 찾고, 셋 다 없으면 `gh auth token`까지 시도한다:
 
 ```bash
@@ -151,7 +151,7 @@ export GITHUB_TOKEN=$(gh auth token)   # 또는 PAT (contents: read)
 curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
 ```
 
-### `dbops update` — 설치 후 자체 업데이트
+### `dbops update`: 설치 후 자체 업데이트
 
 첫 설치 이후에는 바이너리가 스스로 갱신한다. 설치된 `dbops`를 원자적으로 교체하므로,
 실행 중이던 프로세스가 있어도 안전하다.
@@ -164,7 +164,7 @@ dbops update --tag v0.2.0    # 특정 릴리스로 고정 (다운그레이드도
 dbops update --force         # 같은 버전이어도 다시 받아 덮어씀
 ```
 
-동작은 install.sh와 같다 — 릴리스 조회 → 플랫폼에 맞는 아티팩트 다운로드 → 릴리스에 함께
+동작은 install.sh와 같다. 릴리스 조회 → 플랫폼에 맞는 아티팩트 다운로드 → 릴리스에 함께
 올라간 `SHA256SUMS`와 대조 → 원자적 교체. 토큰도 같은 세 환경변수를 본다(`gh` 폴백은 없다.
 서버에는 `gh`가 없으니까).
 
@@ -213,12 +213,12 @@ ssh pg01 'ldd /usr/local/bin/dbops; dbops --version'
 ```
 
 `ldd`가 "not a dynamic executable"(또는 동일 취지의 메시지)을 출력하면 정적 링크가 확인된
-것 — glibc 버전 불일치, openssl 부재 등 흔한 배포 장애가 원천적으로 없다.
+것이다. glibc 버전 불일치나 openssl 부재 같은 흔한 배포 장애가 아예 생기지 않는다.
 
 ## 설정
 
 접속 정보 우선순위는 **CLI 플래그 > `DBOPS_*` env var > TOML config 파일 > 내장 기본값**
-순이다. (단, 현재 개별 DB 필드의 CLI 플래그는 아직 없다 — `--profile`/`--config`만 존재하고
+순이다. (단, 현재 개별 DB 필드의 CLI 플래그는 아직 없다. `--profile`/`--config`만 있고
 나머지는 env/config로 병합된다. `src/frame/config.rs`의 `pick()` 병합 로직에 플래그 자리는
 이미 마련되어 있어 나중에 필드별 플래그가 추가되어도 우선순위 규칙은 그대로 유지된다.)
 
@@ -278,8 +278,8 @@ protected_profiles = ["prod"]            # 파괴적 커맨드에 --confirm-name
 
 ## exit code 규약
 
-`health` 커맨드는 nagios/check_postgres 규약을 그대로 따른다 — 이 매핑은 릴리스 간 절대
-바뀌지 않는 계약이다:
+`health` 커맨드는 nagios/check_postgres 규약을 그대로 따른다. 이 매핑은 릴리스가 바뀌어도
+절대 건드리지 않는 계약이다.
 
 | exit | 의미 |
 |---|---|
@@ -325,14 +325,14 @@ exit "$code"
 `init`/`reset`/`seed`류는 전부 동일한 3중 가드(`frame::guard::authorize`)를 통과해야 실제로
 실행된다. 판정 순서(첫 매치 승):
 
-1. **`--dry-run`** — 계획만 출력하고 exit 0. 실제 실행과 정확히 같은 plan을 그리기 때문에
+1. **`--dry-run`**: 계획만 출력하고 exit 0. 실제 실행과 정확히 같은 plan을 그리기 때문에
    dry-run 결과와 실행 결과가 어긋나지 않는다.
-2. **non-TTY(스크립트/cron) + `--yes` 없음** — 무조건 거부, exit 2. 자동화 스크립트가
+2. **non-TTY(스크립트/cron) + `--yes` 없음**: 무조건 거부, exit 2. 자동화 스크립트가
    실수로 파괴적 커맨드를 실행하는 걸 막는다.
-3. **보호된 프로파일**(`[safety] protected_profiles`) — `--confirm-name <대상이름>`이
+3. **보호된 프로파일**(`[safety] protected_profiles`): `--confirm-name <대상이름>`이
    정확히 일치해야 통과. TTY라면 이름을 다시 입력하라는 프롬프트가 뜨고, non-TTY라면 즉시
    거부(exit 2).
-4. **TTY + `--yes` 없음** — 마지막 "정말 실행?" 확인 프롬프트.
+4. **TTY + `--yes` 없음**: 마지막 "정말 실행?" 확인 프롬프트.
 5. 위 전부 통과 시에만 실제 적용.
 
 즉 CI/자동화에서 돌리려면 `--yes`가 필수고, `prod`처럼 보호된 프로파일이면 `--yes`가
@@ -363,18 +363,18 @@ dbops pg health --critical 1ms; echo "exit=$?"   # → 2
 ## 알려진 제약
 
 - **OpenSearch `https://` + `--insecure` 조합 미지원.** `opensearch` crate가
-  `native-tls`/`rustls-tls` 둘 다 비활성화된 채 빌드된다 — 두 feature 모두 `reqwest`의
+  `native-tls`/`rustls-tls` 둘 다 비활성화된 채 빌드된다. 두 feature 모두 `reqwest`의
   `rustls` feature로 이어지고, 이는 이 프로젝트가 musl 크로스 빌드 회귀 때문에 전역적으로
   피하는 `aws-lc-rs` 크립토 백엔드를 강제한다(`ring`으로 고정). 그 결과 인증서 검증을 끄는
   코드 경로 자체가 바이너리에 존재하지 않는다. `http://` 호스트나 유효한 인증서를 쓰는
   `https://` 호스트는 정상 동작한다. 자세한 내용은
   [`docs/build-spike.md`](docs/build-spike.md)와 `src/os/client.rs`의 모듈 문서 참고.
 - **`pg`에는 별도 `seed` 서브커맨드가 없다** (의도된 설계). 시드 데이터는
-  `pg init schema --file`에 넘기는 SQL 파일에 `INSERT` 문을 함께 넣어 커버한다 —
+  `pg init schema --file`에 넘기는 SQL 파일에 `INSERT` 문을 함께 넣어 커버한다.
   `os`/`mongo`는 NDJSON bulk insert 전용 `seed` 커맨드가 있지만, pg는 이미 임의 SQL을
   트랜잭션으로 적용하는 `init schema`가 있어 별도 커맨드를 만들지 않았다.
-- **`redis slowlog`의 `duration_us` 컬럼 단위는 마이크로초다** — `pg`/`redis health`의 다른
-  시간 필드들이 밀리초인 것과 다르므로 컬럼명이 단위를 명시한다. 착각하지 않도록
+- **`redis slowlog`의 `duration_us` 컬럼 단위는 마이크로초다.** `pg`/`redis health`의 다른
+  시간 필드는 밀리초라서, 헷갈리지 않게 컬럼명에 단위를 박아뒀다. 착각하지 않도록
   테이블/`--json` 양쪽에 `duration`이 아니라 `duration_us`로 표기된다.
 
 ## Shell completion
@@ -395,10 +395,10 @@ dbops completion fish > ~/.config/fish/completions/dbops.fish
 
 ## 테스트
 
-- **`bash tests/integration.sh`** — docker compose로 pg(primary+replica)/mongo(3노드
+- **`bash tests/integration.sh`**는 docker compose로 pg(primary+replica)/mongo(3노드
   replset)/opensearch/redis를 띄우고 모든 `health`/조회 커맨드를 실제 바이너리로
   검증한다 (`--keep`으로 뒤처리 없이 유지 가능).
-- **`bash tests/destructive_matrix.sh`** — `init`/`reset`/`seed`의 3중 가드(dry-run /
+- **`bash tests/destructive_matrix.sh`**는 `init`/`reset`/`seed`의 3중 가드(dry-run /
   non-TTY 거부 / protected profile 이름 확인)를 실제 DB 상태 변경 여부까지 교차검증한다.
 
 둘 다 자체 docker compose 프로젝트(포트 대역도 분리)라 동시에 실행 가능하고,
@@ -414,7 +414,7 @@ scripts/release-build.sh              # 호스트 + 2개 musl 타깃, 정적 링
 ```
 
 release 프로파일(`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`, `opt-level = "z"`,
-`strip = true`)은 `strip`만 켰을 때보다 바이너리를 약 60~70% 줄인다 — 자세한 수치는
+`strip = true`)은 `strip`만 켰을 때보다 바이너리를 약 60~70% 줄인다. 자세한 수치는
 [`docs/build-spike.md`](docs/build-spike.md) 참고. 태그(`vX.Y.Z`)를 push하면
 `.github/workflows/release.yml`이 3타깃을 각각 빌드해 GitHub Release에 첨부한다.
 
@@ -430,11 +430,11 @@ scripts/record-demos.sh --only health  # docs/tape/health.tape 만
 scripts/record-demos.sh --seed-only    # 픽스처만 띄우고 정지
 ```
 
-tape 안의 커맨드는 실제 DB를 상대로 실행된다 — 스크립트가 테스트와 같은 docker
+tape 안의 커맨드는 실제 DB를 상대로 실행된다. 스크립트가 테스트와 같은 docker
 compose 픽스처를 띄우고, 시드를 심고, `demo` 프로파일을 물려준다. 그래서 GIF가
 실제 출력과 어긋날 수 없다. 출력이 바뀌면 다시 렌더하면 된다. 참고로 vhs 0.12.0은
 아무 파일도 쓰지 않고 조용히 끝나므로, 스크립트가 이를 감지해 0.11.0을 안내한다.
 
 ## 라이선스
 
-MIT — [LICENSE](LICENSE) 참고.
+MIT. [LICENSE](LICENSE) 참고.

@@ -3,7 +3,7 @@
 *[한국어 README](README.ko.md)*
 
 A dependency-free, single static binary for checking and initializing
-OpenSearch / MongoDB / PostgreSQL / Redis — built for SREs and support
+OpenSearch, MongoDB, PostgreSQL and Redis, built for SREs and support
 engineers. One `scp` onto a host and `dbops pg health` works right there, with
 no runtime, no shared libraries, and no `ca-certificates` package to install
 first. Every `health` command returns nagios-compatible exit codes (0/1/2/3),
@@ -120,7 +120,7 @@ CRITICAL at 7.
 
 ### Output formats
 
-**Every** command takes `--json`, `health` checks included — so
+Every command takes `--json`, `health` checks included, so
 `dbops pg tables --json | jq .` and `dbops pg health --json` both parse
 directly. Table output is truncated past 100 rows (with a "… N more rows"
 footer); `--json` is never truncated.
@@ -152,7 +152,7 @@ exists.
 
 No token is needed for a public repository. If you hit the unauthenticated
 GitHub API rate limit (60 requests/hour per IP), or you are installing from a
-private fork, export a token — the script reads `DBOPS_GITHUB_TOKEN`,
+private fork, export a token. The script reads `DBOPS_GITHUB_TOKEN`,
 `GITHUB_TOKEN`, `GH_TOKEN` in that order, and falls back to `gh auth token`:
 
 ```bash
@@ -160,7 +160,7 @@ export GITHUB_TOKEN=$(gh auth token)   # or a PAT with contents: read
 curl -fsSL https://raw.githubusercontent.com/x-mesh/dbops/main/install.sh | sh
 ```
 
-### `dbops update` — self-update after the first install
+### `dbops update`: self-update after the first install
 
 Past the first install, the binary updates itself. It replaces the installed
 `dbops` atomically, so it is safe even while another copy is running.
@@ -173,10 +173,10 @@ dbops update --tag v0.2.0    # pin to a specific release (downgrades allowed)
 dbops update --force         # re-download and overwrite even on the same version
 ```
 
-It works exactly like install.sh — look up the release, download the artifact
-for this platform, check it against the `SHA256SUMS` published alongside it,
-swap it in atomically. It reads the same three token variables (there is no
-`gh` fallback here: servers don't have `gh` installed).
+It works the same way install.sh does: look up the release, download the
+artifact for this platform, check it against the `SHA256SUMS` published
+alongside it, swap it in atomically. It reads the same three token variables
+(there is no `gh` fallback here: servers don't have `gh` installed).
 
 Two things to know:
 
@@ -189,14 +189,15 @@ Two things to know:
   executable isn't a convenience, it's a vulnerability.
 
 The SHA256 comparison catches corruption and truncation in transit. Because
-`SHA256SUMS` ships in the same release as the binary it is not a signature —
-the authenticity of the release rests on HTTPS to api.github.com.
+`SHA256SUMS` ships in the same release as the binary, it is not a signature.
+The authenticity of the release rests on HTTPS to api.github.com.
 
 `update` and `http check` carry their trust roots inside the binary (the
 Mozilla CA set unioned with the host's native roots). TLS verification
 therefore still works on minimal images that ship no `ca-certificates`
 package (distroless, slim Debian), while a corporate CA installed on the host
-is still honored — useful when `http check`ing an intranet endpoint. See
+is still honored, which is what you want when `http check`ing an intranet
+endpoint. See
 `src/frame/tls.rs` for the full reasoning.
 
 ## Deploying a build artifact by hand
@@ -229,13 +230,13 @@ ssh pg01 'ldd /usr/local/bin/dbops; dbops --version'
 ```
 
 If `ldd` prints "not a dynamic executable" (or your libc's equivalent), static
-linking is confirmed — the usual deployment failures (glibc version mismatch,
-missing openssl) simply cannot happen.
+linking is confirmed. The usual deployment failures, a glibc version mismatch
+or a missing openssl, cannot happen here.
 
 ## Configuration
 
 Connection settings resolve in this order: **CLI flag > `DBOPS_*` env var >
-TOML config file > built-in default**. (There are no per-field CLI flags yet —
+TOML config file > built-in default**. (There are no per-field CLI flags yet:
 only `--profile` and `--config` exist today, and everything else merges in
 from env vars and the config file. The merge logic in `pick()` in
 `src/frame/config.rs` already has the flag slot wired up, so the precedence
@@ -349,19 +350,19 @@ Every `init`/`reset`/`seed` command must clear the same triple guard
 (`frame::guard::authorize`) before it touches anything. The checks run in
 order, first match wins:
 
-1. **`--dry-run`** — print the plan, exit 0. The plan is built by the same code
+1. **`--dry-run`**: print the plan, exit 0. The plan is built by the same code
    path the real run uses, so a dry run can't disagree with the execution.
-2. **Non-TTY (script/cron) without `--yes`** — always refused, exit 2. This is
+2. **Non-TTY (script/cron) without `--yes`**: always refused, exit 2. This is
    what stops an automation script from destroying something by accident.
-3. **Protected profile** (`[safety] protected_profiles`) — `--confirm-name
+3. **Protected profile** (`[safety] protected_profiles`): `--confirm-name
    <target name>` must match exactly. On a TTY you are prompted to retype the
    name; on a non-TTY it is refused immediately (exit 2).
-4. **TTY without `--yes`** — a final "really do this?" prompt.
+4. **TTY without `--yes`**: a final "really do this?" prompt.
 5. Only after all of the above does anything actually get applied.
 
 In other words: `--yes` is mandatory in CI and automation, and on a protected
-profile like `prod`, `--yes` alone isn't enough — `--confirm-name` has to match
-too.
+profile like `prod`, `--yes` alone is not enough. `--confirm-name` has to
+match as well.
 
 ![dbops os reset index printing its plan under --dry-run, then being refused in a non-interactive shell, then refused again on a protected profile for a --confirm-name that does not match, with the index still listed afterwards](docs/media/guard.gif)
 
@@ -388,20 +389,20 @@ dbops pg health --critical 1ms; echo "exit=$?"   # → 2
 ## Known limitations
 
 - **OpenSearch over `https://` with `--insecure` is unsupported.** The
-  `opensearch` crate is built with both `native-tls` and `rustls-tls` disabled —
-  each feature leads to `reqwest`'s `rustls` feature, which forces the
+  `opensearch` crate is built with both `native-tls` and `rustls-tls` disabled.
+  Each feature leads to `reqwest`'s `rustls` feature, which forces the
   `aws-lc-rs` crypto backend that this project avoids globally because of a
   musl cross-compile regression (everything is pinned to `ring`). As a result
   the code path that disables certificate verification is not in the binary at
   all. An `http://` host, or an `https://` host with a valid certificate, works
   normally. See [`docs/build-spike.md`](docs/build-spike.md) and the module
   docs in `src/os/client.rs`.
-- **`pg` has no `seed` subcommand** — by design. Seed data goes into the SQL
+- **`pg` has no `seed` subcommand**, by design. Seed data goes into the SQL
   file you hand to `pg init schema --file` as `INSERT` statements. `os`/`mongo`
   have a dedicated `seed` for NDJSON bulk insert, but pg already applies
   arbitrary SQL transactionally through `init schema`, so a second command
   would have been redundant.
-- **`redis slowlog`'s `duration_us` column is in microseconds** — unlike the
+- **`redis slowlog`'s `duration_us` column is in microseconds**, unlike the
   other time fields in `pg`/`redis health`, which are milliseconds. The column
   name states the unit for exactly that reason: both the table and the `--json`
   output say `duration_us`, never `duration`.
@@ -425,11 +426,11 @@ missing or broken.
 
 ## Tests
 
-- **`bash tests/integration.sh`** — brings up pg (primary + replica), mongo (a
+- **`bash tests/integration.sh`** brings up pg (primary + replica), mongo (a
   3-node replica set), opensearch, and redis with docker compose, then
   verifies every `health` and read command against the real binary (`--keep`
   leaves the fixture up).
-- **`bash tests/destructive_matrix.sh`** — cross-checks the triple guard on
+- **`bash tests/destructive_matrix.sh`** cross-checks the triple guard on
   `init`/`reset`/`seed` (dry run / non-TTY refusal / protected-profile name
   confirmation) all the way down to whether the database state actually
   changed.
@@ -449,7 +450,7 @@ scripts/release-build.sh              # host + both musl targets, static-link an
 
 The release profile (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`,
 `opt-level = "z"`, `strip = true`) cuts the binary roughly 60–70% below what
-`strip` alone gives — measurements in
+`strip` alone gives. The measurements are in
 [`docs/build-spike.md`](docs/build-spike.md). Pushing a `vX.Y.Z` tag makes
 `.github/workflows/release.yml` build all three targets and attach them to a
 GitHub Release.
@@ -474,4 +475,4 @@ nothing; the script checks for it and points at 0.11.0.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

@@ -73,7 +73,7 @@ pub async fn run_init_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> R
     };
 
     if exists {
-        println!("database '{name}' already exists — nothing to do");
+        println!("database '{name}' already exists; nothing to do");
         return Ok(ExitCode::from(unix::SUCCESS));
     }
 
@@ -153,7 +153,7 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
     // mistake. It's reported as a hard error, before any plan/guard step.
     let Some(probe) = probe else {
         eprintln!(
-            "error: database '{name}' does not exist — refusing to drop a possibly-mistyped target"
+            "error: database '{name}' does not exist; refusing to drop a possibly-mistyped target"
         );
         return Ok(ExitCode::from(unix::GENERAL_ERROR));
     };
@@ -163,7 +163,7 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
             kind: ActionKind::Drop,
             target: name.to_string(),
             detail: format!(
-                "drop database ({} collection{}) — mongo has no separate 'recreate' step; the \
+                "drop database ({} collection{}). Mongo has no separate 'recreate' step; the \
                  database comes back implicitly on the next write or the next `mongo init db`",
                 probe.collections,
                 plural(probe.collections),
@@ -180,8 +180,8 @@ pub async fn run_reset_db(ctx: &Ctx, name: &str, confirm_name: Option<&str>) -> 
             match tokio::time::timeout(ctx.timeout, db.drop()).await {
                 Ok(Ok(())) => {
                     println!(
-                        "database '{name}' dropped ({} collection{}, ~{} document{} removed) — \
-                         this is mongo's equivalent of reset; nothing is recreated automatically",
+                        "database '{name}' dropped ({} collection{}, ~{} document{} removed). \
+                         This is mongo's equivalent of reset; nothing is recreated automatically",
                         probe.collections,
                         plural(probe.collections),
                         probe.documents,
@@ -269,11 +269,11 @@ pub async fn run_init_user(
 
     if exists {
         if if_not_exists {
-            println!("user '{name}' already exists on database '{db_name}' — nothing to do");
+            println!("user '{name}' already exists on database '{db_name}'; nothing to do");
             return Ok(ExitCode::from(unix::SUCCESS));
         }
         eprintln!(
-            "error: user '{name}' already exists on database '{db_name}' — re-run with \
+            "error: user '{name}' already exists on database '{db_name}'; re-run with \
              --if-not-exists to treat this as success"
         );
         return Ok(ExitCode::from(unix::GENERAL_ERROR));
@@ -333,7 +333,7 @@ fn resolve_password(flag: Option<&str>) -> Result<String> {
         return Ok(password.to_string());
     }
     std::env::var(PASSWORD_ENV_VAR).with_context(|| {
-        format!("no password given — pass --password (not recommended) or set {PASSWORD_ENV_VAR}")
+        format!("no password given; pass --password (not recommended) or set {PASSWORD_ENV_VAR}")
     })
 }
 

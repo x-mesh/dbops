@@ -175,19 +175,19 @@ impl Client {
                            `export GITHUB_TOKEN=$(gh auth token)`)";
         let hint = match status {
             StatusCode::NOT_FOUND if self.token.is_none() => {
-                format!("no such release — if {repo} is private, {get_a_token}")
+                format!("no such release; if {repo} is private, {get_a_token}")
             }
             StatusCode::NOT_FOUND => {
-                format!("no such release — check the tag exists and the token can read {repo}")
+                format!("no such release; check the tag exists and the token can read {repo}")
             }
             StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN if self.token.is_none() => {
                 format!(
-                    "denied, or rate-limited — unauthenticated GitHub API calls are capped at \
+                    "denied, or rate-limited. Unauthenticated GitHub API calls are capped at \
                      60/hour; {get_a_token}"
                 )
             }
             StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
-                format!("denied — the token cannot read {repo} (it needs `contents: read`)")
+                format!("denied; the token cannot read {repo} (it needs `contents: read`)")
             }
             _ => "unexpected response from the GitHub API".to_string(),
         };

@@ -24,7 +24,7 @@ pub fn asset_target(os: &str, arch: &str) -> Result<&'static str> {
         // The release matrix publishes no Intel macOS artifact. Say so,
         // rather than hand this host an arm64 binary it cannot exec.
         ("macos", "x86_64") => bail!(
-            "no published artifact for Intel macOS (x86_64-apple-darwin) — \
+            "no published artifact for Intel macOS (x86_64-apple-darwin); \
              build from source with `cargo build --release`"
         ),
         _ => bail!("unsupported platform: {os}/{arch} (dbops publishes macOS arm64 and Linux x86_64/arm64)"),

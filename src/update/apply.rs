@@ -115,7 +115,7 @@ fn write_executable(path: &Path, bytes: &[u8]) -> Result<()> {
 /// both ways out are worth naming.
 fn permission_hint(dir: &Path) -> String {
     format!(
-        "cannot write into {} — re-run as root (`sudo dbops update`), or reinstall dbops \
+        "cannot write into {}. Re-run as root (`sudo dbops update`), or reinstall dbops \
          somewhere you own (`DBOPS_INSTALL_DIR=$HOME/.local/bin`)",
         dir.display()
     )
